@@ -21,6 +21,7 @@ mod tasks;
 mod events;
 mod experimental;
 mod auth;
+mod vulnerability;  // Add vulnerability module
 
 pub fn create_router() -> Router {
     Router::new()
@@ -44,6 +45,7 @@ pub fn create_router() -> Router {
         .merge(events::routes())
         .merge(experimental::routes())
         .merge(auth::routes())
+        .merge(vulnerability::routes())  // Merge vulnerability routes
         .route("/health", get(health_check))
 }
 

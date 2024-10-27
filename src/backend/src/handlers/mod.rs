@@ -19,6 +19,7 @@ pub mod sca;
 pub mod lists;
 pub mod logtest;
 pub mod experimental;
+pub mod vulnerability;  // Add vulnerability module
 
 // Re-export only the handlers that are actually used in routes
 pub use manager::{
@@ -40,4 +41,9 @@ pub use syscollector::{
 pub use syscheck::{
     get_syscheck_agent,
     get_syscheck_last_scan,
+};
+pub use vulnerability::{  // Re-export vulnerability handlers
+    get_vulnerability_inventory,
+    get_vulnerability_summary,
+    get_vulnerability_last_scan,
 };

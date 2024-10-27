@@ -1,6 +1,7 @@
 const nodeFetch = require('node-fetch');
 
 const PROXY_URL = "http://127.0.0.1:3001";
+const WAZUH_URL = "https://wazuh.aixsoar.com:55000";
 const USERNAME = "wazuh-wui";
 const PASSWORD = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
 
@@ -16,49 +17,59 @@ describe('Rust Proxy Authentication Flow', () => {
 
     const getAuthToken = async (): Promise<string> => {
         const authUrl = `${PROXY_URL}/security/user/authenticate`;
-        const authString = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
         
         const response = await nodeFetch(authUrl, {
-            method: 'GET',
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${authString}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: `${USERNAME}:${PASSWORD}`
+            })
         });
 
         if (!response.ok) {
-            throw new Error(`Authentication failed: ${response.statusText}`);
+            throw new Error(`Authentication failed: ${response.statusText}. ${await response.text()}`);
         }
 
         const data = await response.json() as WazuhAuthResponse;
-        return data.token || (data.data && data.data.token) || '';
+        return data.data?.token || '';
     };
 
     test('should authenticate through Rust proxy', async () => {
         const authUrl = `${PROXY_URL}/security/user/authenticate`;
-        const authString = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
         
         const response = await nodeFetch(authUrl, {
-            method: 'GET',
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${authString}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: `${USERNAME}:${PASSWORD}`
+            })
         });
 
         expect(response.status).toBe(200);
         const data = await response.json() as WazuhAuthResponse;
         expect(data).toBeDefined();
+        expect(data.data?.token).toBeDefined();
         console.log('Proxy Auth Response:', data);
     });
 
     test('should fail with incorrect credentials through proxy', async () => {
         const authUrl = `${PROXY_URL}/security/user/authenticate`;
-        const wrongAuthString = Buffer.from(`${USERNAME}:wrong_password`).toString('base64');
         
         const response = await nodeFetch(authUrl, {
-            method: 'GET',
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${wrongAuthString}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: `${USERNAME}:wrong_password`
+            })
         });
 
         expect(response.status).toBe(401);
@@ -81,10 +92,14 @@ describe('Rust Proxy Authentication Flow', () => {
 
         const testUrl = `${PROXY_URL}/agents`;
         const response = await nodeFetch(testUrl, {
-            method: 'GET',
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: authToken
+            })
         });
 
         expect(response.status).toBe(200);
