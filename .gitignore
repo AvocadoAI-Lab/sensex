@@ -42,3 +42,4 @@ next-env.d.ts
 .idea/
 /wazuh_api_spec.yaml
 /src/app/docs/
+/src/backend/src/tests/load_tests.rs
