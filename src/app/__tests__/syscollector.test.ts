@@ -14,7 +14,8 @@ describe('Wazuh Syscollector API Flow', () => {
         const response = await makeAuthorizedRequest('/agents');
         
         if (response.data.affected_items.length > 0) {
-            agentId = response.data.affected_items[0].id;
+            // Get the first agent ID and ensure it's at least 3 digits
+            agentId = response.data.affected_items[0].id.padStart(3, '0');
             console.log('Using agent ID:', agentId);
             appendToDoc('Selected Agent', { id: agentId });
         } else {
@@ -29,7 +30,11 @@ describe('Wazuh Syscollector API Flow', () => {
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/hardware`);
+        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/hardware`, 'POST', {
+            params: {
+                agent_id: agentId
+            }
+        });
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -44,7 +49,11 @@ describe('Wazuh Syscollector API Flow', () => {
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/os`);
+        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/os`, 'POST', {
+            params: {
+                agent_id: agentId
+            }
+        });
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -59,7 +68,11 @@ describe('Wazuh Syscollector API Flow', () => {
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/packages`);
+        const response = await makeAuthorizedRequest(`/syscollector/${agentId}/packages`, 'POST', {
+            params: {
+                agent_id: agentId
+            }
+        });
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
