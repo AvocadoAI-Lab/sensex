@@ -19,6 +19,14 @@ use crate::handlers::{
     upgrade_agents,
     get_agent_upgrade_result,
     get_agent_sync_status,
+    // New handlers
+    get_agent_by_id,
+    delete_agent_by_id,
+    restart_agent_by_id,
+    get_agent_config_by_id,
+    get_agent_stats_process,
+    get_agent_stats_anomaly,
+    get_agent_stats_syscollector,
 };
 
 pub fn routes() -> Router {
@@ -48,4 +56,13 @@ pub fn routes() -> Router {
         .route("/agents/upgrade", put(upgrade_agents))
         .route("/agents/upgrade_result", get(get_agent_upgrade_result))
         .route("/agents/sync", get(get_agent_sync_status))
+
+        // New routes with {agent_id}
+        .route("/agents/:agent_id", get(get_agent_by_id))
+        .route("/agents/:agent_id", delete(delete_agent_by_id))
+        .route("/agents/:agent_id/restart", put(restart_agent_by_id))
+        .route("/agents/:agent_id/config/:component/:configuration", get(get_agent_config_by_id))
+        .route("/agents/:agent_id/stats/process", get(get_agent_stats_process))
+        .route("/agents/:agent_id/stats/anomaly", get(get_agent_stats_anomaly))
+        .route("/agents/:agent_id/stats/syscollector", get(get_agent_stats_syscollector))
 }

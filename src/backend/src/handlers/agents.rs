@@ -68,3 +68,32 @@ pub async fn get_daemon_stats(Json(payload): Json<WazuhRequest>) -> Json<serde_j
 pub async fn get_agent_fields(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
     handle_wazuh_request(payload, "agents/stats/distinct", |url| url).await
 }
+
+// New endpoints with {agent_id}
+pub async fn get_agent_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}", |url| url).await
+}
+
+pub async fn delete_agent_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}", |url| url).await
+}
+
+pub async fn restart_agent_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/restart", |url| url).await
+}
+
+pub async fn get_agent_config_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/config/{component}/{configuration}", |url| url).await
+}
+
+pub async fn get_agent_stats_process(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/stats/process", |url| url).await
+}
+
+pub async fn get_agent_stats_anomaly(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/stats/anomaly", |url| url).await
+}
+
+pub async fn get_agent_stats_syscollector(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/stats/syscollector", |url| url).await
+}
