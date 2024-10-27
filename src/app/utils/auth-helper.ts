@@ -36,7 +36,8 @@ export async function getAuthToken(): Promise<string> {
 }
 
 interface RequestOptions {
-    params?: Record<string, string>;
+    params?: Record<string, any>;  // Allow any type for param values
+    [key: string]: any;  // Allow any additional properties
 }
 
 export async function makeAuthorizedRequest(
@@ -58,7 +59,7 @@ export async function makeAuthorizedRequest(
             body: JSON.stringify({
                 endpoint: WAZUH_URL,
                 token: token,
-                params: options.params || {}
+                ...options  // Include all options in the request
             })
         });
 

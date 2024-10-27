@@ -1,11 +1,6 @@
-use axum::{
-    Router,
-    routing::{put, delete},
-};
-use crate::handlers::logtest::*;
+use axum::Router;
 
 pub fn routes() -> Router {
     Router::new()
-        .route("/logtest", put(run_logtest))
-        .route("/logtest/sessions/:token", delete(delete_logtest_session))
+    // Logtest routes removed until proper endpoint support is implemented
 }

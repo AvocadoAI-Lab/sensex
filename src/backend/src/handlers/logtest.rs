@@ -8,5 +8,5 @@ pub async fn run_logtest(Json(payload): Json<WazuhRequest>) -> Json<serde_json::
 
 // Delete logtest session
 pub async fn delete_logtest_session(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
-    handle_wazuh_request(payload, "logtest/sessions/{token}", |url| url).await
+    handle_wazuh_request(payload, "logtest/remove", |url| url).await
 }
