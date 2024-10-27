@@ -20,7 +20,7 @@ struct AuthResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct AgentsRequest {
+struct WazuhRequest {
     endpoint: String,
     token: String,
 }
@@ -35,6 +35,14 @@ async fn main() {
     let app = Router::new()
         .route("/auth", post(authenticate))
         .route("/agents", post(get_agents))
+        .route("/cluster/status", post(get_cluster_status))
+        .route("/manager/status", post(get_manager_status))
+        .route("/manager/info", post(get_manager_info))
+        .route("/cluster/local/info", post(get_cluster_local_info))
+        .route("/rules", post(get_rules))
+        .route("/decoders", post(get_decoders))
+        .route("/manager/logs", post(get_manager_logs))
+        .route("/manager/stats", post(get_manager_stats))
         .route("/health", get(health_check))
         .layer(cors);
 
@@ -96,16 +104,232 @@ async fn authenticate(Json(payload): Json<AuthRequest>) -> Json<AuthResponse> {
         }
 }
 
-async fn get_agents(Json(payload): Json<AgentsRequest>) -> Json<serde_json::Value> {
+async fn get_agents(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
     
-    let agents_url = format!("{}/agents", payload.endpoint);
+    let url = format!("{}/agents", payload.endpoint);
     
     match client
-        .get(&agents_url)
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_cluster_status(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/cluster/status", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_manager_status(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/manager/status", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_manager_info(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/manager/info", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_cluster_local_info(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/cluster/local/info", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_rules(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/rules", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_decoders(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/decoders", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_manager_logs(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/manager/logs", payload.endpoint);
+    
+    match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
+        }
+}
+
+async fn get_manager_stats(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let url = format!("{}/manager/stats", payload.endpoint);
+    
+    match client
+        .get(&url)
         .header("Authorization", format!("Bearer {}", payload.token))
         .send()
         .await {
