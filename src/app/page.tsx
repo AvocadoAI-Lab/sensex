@@ -7,7 +7,9 @@ export default function Home() {
     username: '',
     password: '',
   });
-  const [result, setResult] = useState<string>('');
+  const [token, setToken] = useState<string | null>(null);
+  const [agents, setAgents] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +23,40 @@ export default function Home() {
       });
       
       const data = await response.json();
-      setResult(JSON.stringify(data, null, 2));
+      if (data.token) {
+        setToken(data.token);
+        setError(null);
+        // 自動獲取 agents
+        fetchAgents(data.token);
+      } else {
+        setError(data.error || 'Authentication failed');
+      }
     } catch (error) {
-      setResult('Error: ' + (error as Error).message);
+      setError((error as Error).message);
+    }
+  };
+
+  const fetchAgents = async (authToken: string) => {
+    try {
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          endpoint: formData.endpoint,
+          token: authToken
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setAgents(data);
+      }
+    } catch (error) {
+      setError((error as Error).message);
     }
   };
 
@@ -94,11 +127,26 @@ export default function Home() {
           </button>
         </form>
 
-        {result && (
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md">
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {token && (
           <div className="mt-4">
-            <h2 className="text-lg font-semibold mb-2">Response:</h2>
-            <pre className="bg-gray-100 p-4 rounded-md overflow-auto">
-              {result}
+            <h2 className="text-lg font-semibold mb-2">JWT Token:</h2>
+            <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-xs">
+              {token}
+            </pre>
+          </div>
+        )}
+
+        {agents && (
+          <div className="mt-4">
+            <h2 className="text-lg font-semibold mb-2">Agents:</h2>
+            <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-xs">
+              {JSON.stringify(agents, null, 2)}
             </pre>
           </div>
         )}

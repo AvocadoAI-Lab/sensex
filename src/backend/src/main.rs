@@ -19,6 +19,12 @@ struct AuthResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct AgentsRequest {
+    endpoint: String,
+    token: String,
+}
+
 #[tokio::main]
 async fn main() {
     let cors = CorsLayer::new()
@@ -28,6 +34,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/auth", post(authenticate))
+        .route("/agents", post(get_agents))
         .route("/health", get(health_check))
         .layer(cors);
 
@@ -49,7 +56,6 @@ async fn health_check() -> StatusCode {
 }
 
 async fn authenticate(Json(payload): Json<AuthRequest>) -> Json<AuthResponse> {
-    // 建立一個忽略 SSL 驗證的 client
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
@@ -87,5 +93,32 @@ async fn authenticate(Json(payload): Json<AuthRequest>) -> Json<AuthResponse> {
                 token: None,
                 error: Some(format!("Request failed: {}", e)),
             }),
+        }
+}
+
+async fn get_agents(Json(payload): Json<AgentsRequest>) -> Json<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    
+    let agents_url = format!("{}/agents", payload.endpoint);
+    
+    match client
+        .get(&agents_url)
+        .header("Authorization", format!("Bearer {}", payload.token))
+        .send()
+        .await {
+            Ok(response) => {
+                match response.json::<serde_json::Value>().await {
+                    Ok(data) => Json(data),
+                    Err(e) => Json(serde_json::json!({
+                        "error": format!("Failed to parse response: {}", e)
+                    })),
+                }
+            },
+            Err(e) => Json(serde_json::json!({
+                "error": format!("Request failed: {}", e)
+            })),
         }
 }
