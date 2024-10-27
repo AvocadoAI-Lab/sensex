@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import WazuhAuthForm from './components/WazuhAuthForm';
+import FloatingAuthHeader from './components/FloatingAuthHeader';
 import AgentsVisualization from './components/AgentsVisualization';
 import { AgentsResponse } from './types/agents';
 
@@ -59,25 +59,33 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="md:col-span-1">
-            <WazuhAuthForm onSubmit={handleSubmit} error={error} />
-          </div>
-          
-          <div className="md:col-span-3">
-            {agents ? (
+    <div className="relative min-h-screen bg-gray-50">
+      <FloatingAuthHeader 
+        onSubmit={handleSubmit} 
+        error={error}
+        isAuthenticated={!!agents}
+      />
+      
+      <div className={`transition-all duration-300 ${agents ? 'pt-24' : 'pt-0'}`}>
+        {agents ? (
+          <div className="p-8">
+            <div className="max-w-7xl mx-auto">
               <AgentsVisualization agents={agents} />
-            ) : (
-              <div className="bg-white p-8 rounded-lg shadow text-center">
-                <h2 className="text-xl font-semibold text-gray-700">Welcome to Wazuh Dashboard</h2>
-                <p className="mt-2 text-gray-600">Please authenticate to view agent information</p>
-              </div>
-            )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center max-w-md mx-auto p-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                Welcome to Wazuh Dashboard
+              </h1>
+              <p className="text-gray-600">
+                Please authenticate using the form above to view your agent information.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
-    </main>
+    </div>
   );
 }

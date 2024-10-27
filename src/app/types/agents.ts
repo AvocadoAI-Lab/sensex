@@ -32,7 +32,7 @@ export interface AgentsResponse {
   data: {
     affected_items: Agent[];
     total_affected_items: number;
-    failed_items: any[];
+    failed_items: unknown[];
     total_failed_items: number;
   };
   error: number;
