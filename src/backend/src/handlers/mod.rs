@@ -17,6 +17,7 @@ pub mod security;
 pub mod tasks;
 pub mod sca;
 
+// Re-export all handlers
 pub use auth::*;
 pub use manager::*;
 pub use cluster::*;
@@ -27,10 +28,7 @@ pub use groups::*;
 pub use syscollector::*;
 pub use syscheck::*;
 pub use active_response::*;
-pub use events::*;
 pub use mitre::*;
-pub use ciscat::*;
-pub use rootcheck::*;
 pub use security::*;
 pub use tasks::*;
 pub use sca::*;
