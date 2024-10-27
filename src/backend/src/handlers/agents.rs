@@ -61,6 +61,10 @@ pub async fn upgrade_agents(Json(payload): Json<WazuhRequest>) -> Json<serde_jso
     handle_wazuh_request(payload, "agents/upgrade", |url| url).await
 }
 
+pub async fn upgrade_agents_custom(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/upgrade_custom", |url| url).await
+}
+
 pub async fn get_daemon_stats(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
     handle_wazuh_request(payload, "agents/daemons/stats", |url| url).await
 }
@@ -69,7 +73,38 @@ pub async fn get_agent_fields(Json(payload): Json<WazuhRequest>) -> Json<serde_j
     handle_wazuh_request(payload, "agents/stats/distinct", |url| url).await
 }
 
-// New endpoints with {agent_id}
+// Agent group operations
+pub async fn put_agents_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/group", |url| url).await
+}
+
+pub async fn delete_agents_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/group", |url| url).await
+}
+
+pub async fn restart_agents_by_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/group/{group_id}/restart", |url| url).await
+}
+
+// Agent insertion
+pub async fn insert_agent(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/insert", |url| url).await
+}
+
+pub async fn insert_agent_quick(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/insert/quick", |url| url).await
+}
+
+pub async fn reconnect_agents(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/reconnect", |url| url).await
+}
+
+// Node-specific operations
+pub async fn restart_agents_by_node(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/node/{node_id}/restart", |url| url).await
+}
+
+// Individual agent operations
 pub async fn get_agent_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
     handle_wazuh_request(payload, "agents/{agent_id}", |url| url).await
 }
@@ -84,6 +119,22 @@ pub async fn restart_agent_by_id(Json(payload): Json<WazuhRequest>) -> Json<serd
 
 pub async fn get_agent_config_by_id(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
     handle_wazuh_request(payload, "agents/{agent_id}/config/{component}/{configuration}", |url| url).await
+}
+
+pub async fn delete_agent_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/group", |url| url).await
+}
+
+pub async fn get_agent_group_sync_status(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/group/is_sync", |url| url).await
+}
+
+pub async fn delete_agent_from_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/group/{group_id}", |url| url).await
+}
+
+pub async fn put_agent_group(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {
+    handle_wazuh_request(payload, "agents/{agent_id}/group/{group_id}", |url| url).await
 }
 
 pub async fn get_agent_stats_process(Json(payload): Json<WazuhRequest>) -> Json<serde_json::Value> {

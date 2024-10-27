@@ -2,32 +2,7 @@ use axum::{
     Router,
     routing::{get, post, put, delete},
 };
-use crate::handlers::{
-    get_agents,
-    add_agent,
-    delete_agents,
-    get_agent_config,
-    get_agent_key,
-    get_agent_no_group,
-    get_agent_outdated,
-    get_agent_stats,
-    get_agent_fields,
-    get_daemon_stats,
-    get_agent_summary_status,
-    get_agent_summary_os,
-    restart_agent,
-    upgrade_agents,
-    get_agent_upgrade_result,
-    get_agent_sync_status,
-    // New handlers
-    get_agent_by_id,
-    delete_agent_by_id,
-    restart_agent_by_id,
-    get_agent_config_by_id,
-    get_agent_stats_process,
-    get_agent_stats_anomaly,
-    get_agent_stats_syscollector,
-};
+use crate::handlers::agents::*;
 
 pub fn routes() -> Router {
     Router::new()
@@ -54,14 +29,32 @@ pub fn routes() -> Router {
         // Agent operations
         .route("/agents/restart", put(restart_agent))
         .route("/agents/upgrade", put(upgrade_agents))
+        .route("/agents/upgrade_custom", put(upgrade_agents_custom))
         .route("/agents/upgrade_result", get(get_agent_upgrade_result))
         .route("/agents/sync", get(get_agent_sync_status))
+        .route("/agents/reconnect", get(reconnect_agents))
 
-        // New routes with {agent_id}
+        // Group operations
+        .route("/agents/group", put(put_agents_group))
+        .route("/agents/group", delete(delete_agents_group))
+        .route("/agents/group/:group_id/restart", put(restart_agents_by_group))
+
+        // Agent insertion
+        .route("/agents/insert", post(insert_agent))
+        .route("/agents/insert/quick", post(insert_agent_quick))
+
+        // Node operations
+        .route("/agents/node/:node_id/restart", put(restart_agents_by_node))
+
+        // Individual agent operations
         .route("/agents/:agent_id", get(get_agent_by_id))
         .route("/agents/:agent_id", delete(delete_agent_by_id))
         .route("/agents/:agent_id/restart", put(restart_agent_by_id))
         .route("/agents/:agent_id/config/:component/:configuration", get(get_agent_config_by_id))
+        .route("/agents/:agent_id/group", delete(delete_agent_group))
+        .route("/agents/:agent_id/group/is_sync", get(get_agent_group_sync_status))
+        .route("/agents/:agent_id/group/:group_id", delete(delete_agent_from_group))
+        .route("/agents/:agent_id/group/:group_id", put(put_agent_group))
         .route("/agents/:agent_id/stats/process", get(get_agent_stats_process))
         .route("/agents/:agent_id/stats/anomaly", get(get_agent_stats_anomaly))
         .route("/agents/:agent_id/stats/syscollector", get(get_agent_stats_syscollector))
