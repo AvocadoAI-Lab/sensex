@@ -11,7 +11,7 @@ use crate::handlers::{
     get_manager_stats,
     get_syscollector_hardware,
     get_syscollector_os,
-    get_syscheck_files,
+    get_syscheck_agent,
     get_syscheck_last_scan,
     get_rules,
     get_decoders,
@@ -19,11 +19,6 @@ use crate::handlers::{
     get_group_files,
     get_group_agents,
     get_tasks_status,
-    get_tasks_list,
-    get_task_result,
-    get_sca_checks,
-    get_sca_results,
-    get_sca_policies,
 };
 
 pub fn routes() -> Router {
@@ -39,8 +34,8 @@ pub fn routes() -> Router {
         // System monitoring
         .route("/syscollector/hardware", post(get_syscollector_hardware))
         .route("/syscollector/os", post(get_syscollector_os))
-        .route("/syscheck/files", post(get_syscheck_files))
-        .route("/syscheck/last_scan", post(get_syscheck_last_scan))
+        .route("/syscheck/:agent_id", post(get_syscheck_agent))
+        .route("/syscheck/:agent_id/last_scan", post(get_syscheck_last_scan))
         
         // Rules and decoders
         .route("/rules", post(get_rules))
@@ -52,12 +47,5 @@ pub fn routes() -> Router {
         .route("/groups/agents", post(get_group_agents))
         
         // Tasks
-        .route("/tasks", post(get_tasks_list))
         .route("/tasks/status", post(get_tasks_status))
-        .route("/tasks/result", post(get_task_result))
-        
-        // Security assessment
-        .route("/sca/checks", post(get_sca_checks))
-        .route("/sca/results", post(get_sca_results))
-        .route("/sca/policies", post(get_sca_policies))
 }
