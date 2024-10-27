@@ -1,6 +1,8 @@
 mod client;
 mod handlers;
 mod routes;
+#[cfg(test)]
+mod tests;
 
 use tower_http::cors::{CorsLayer, Any};
 
