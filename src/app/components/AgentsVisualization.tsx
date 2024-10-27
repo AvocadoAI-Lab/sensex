@@ -15,32 +15,31 @@ export default function AgentsVisualization({ agents }: AgentsVisualizationProps
   const [sortField, setSortField] = useState<SortField>('id');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Calculate status counts
-  const statusCounts = agents.data.affected_items.reduce((acc, agent) => {
-    acc[agent.status] = (acc[agent.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const activeCount = agents.data.affected_items.filter(a => a.status === 'active').length;
+    const disconnectedCount = agents.data.affected_items.filter(a => a.status === 'disconnected').length;
+    
+    const osDistribution = agents.data.affected_items.reduce((acc, agent) => {
+      const platform = agent.os?.platform || 'unknown';
+      acc[platform] = (acc[platform] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-  // Calculate OS distribution
-  const osDistribution = agents.data.affected_items.reduce((acc, agent) => {
-    const platform = agent.os?.platform || 'unknown';
-    acc[platform] = (acc[platform] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+    const versionDistribution = agents.data.affected_items.reduce((acc, agent) => {
+      const version = agent.version || 'unknown';
+      acc[version] = (acc[version] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-  // Calculate version distribution
-  const versionDistribution = agents.data.affected_items.reduce((acc, agent) => {
-    const version = agent.version || 'unknown';
-    acc[version] = (acc[version] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const statusColors = {
-    active: 'bg-green-100 text-green-800',
-    disconnected: 'bg-red-100 text-red-800',
-    pending: 'bg-yellow-100 text-yellow-800',
-    never_connected: 'bg-gray-100 text-gray-800',
-  };
+    return {
+      total: agents.data.total_affected_items,
+      active: activeCount,
+      disconnected: disconnectedCount,
+      osDistribution,
+      versionDistribution
+    };
+  }, [agents]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -82,70 +81,82 @@ export default function AgentsVisualization({ agents }: AgentsVisualizationProps
     });
   }, [agents.data.affected_items, sortField, sortDirection]);
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
-    return (
-      <span className="ml-1">
-        {sortDirection === 'asc' ? '↑' : '↓'}
-      </span>
-    );
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Total Agents</h3>
-          <p className="text-2xl font-bold text-gray-900">{agents.data.total_affected_items}</p>
-        </div>
-        {Object.entries(statusCounts).map(([status, count]) => (
-          <div key={status} className={`p-4 rounded-lg ${statusColors[status as keyof typeof statusColors] || 'bg-blue-100 text-blue-800'}`}>
-            <h3 className="text-sm font-medium capitalize">{status.replace('_', ' ')}</h3>
-            <p className="text-2xl font-bold">{count}</p>
+    <div className="space-y-8">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-gray-500 text-sm font-medium">Total Agents</h3>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              Total
+            </span>
           </div>
-        ))}
+          <p className="mt-2 text-3xl font-bold text-gray-900">{stats.total}</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-gray-500 text-sm font-medium">Active Agents</h3>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Online
+            </span>
+          </div>
+          <p className="mt-2 text-3xl font-bold text-green-600">{stats.active}</p>
+          <p className="mt-1 text-sm text-gray-500">{((stats.active / stats.total) * 100).toFixed(1)}% of total</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-gray-500 text-sm font-medium">Disconnected Agents</h3>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              Offline
+            </span>
+          </div>
+          <p className="mt-2 text-3xl font-bold text-red-600">{stats.disconnected}</p>
+          <p className="mt-1 text-sm text-gray-500">{((stats.disconnected / stats.total) * 100).toFixed(1)}% of total</p>
+        </div>
       </div>
 
       {/* Distribution Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* OS Distribution */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">OS Distribution</h3>
-          <div className="space-y-2">
-            {Object.entries(osDistribution).map(([os, count]) => (
-              <div key={os} className="flex items-center">
-                <div className="w-24 capitalize truncate" title={os}>{os}</div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500"
-                      style={{ width: `${(count / agents.data.total_affected_items) * 100}%` }}
-                    />
-                  </div>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">OS Distribution</h3>
+          <div className="space-y-4">
+            {Object.entries(stats.osDistribution).map(([os, count]) => (
+              <div key={os}>
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span className="font-medium">{os}</span>
+                  <span>{count} ({((count / stats.total) * 100).toFixed(1)}%)</span>
                 </div>
-                <div className="w-12 text-right">{count}</div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{ width: `${(count / stats.total) * 100}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Version Distribution */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Version Distribution</h3>
-          <div className="space-y-2">
-            {Object.entries(versionDistribution).map(([version, count]) => (
-              <div key={version} className="flex items-center">
-                <div className="w-24 truncate" title={version}>{version}</div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500"
-                      style={{ width: `${(count / agents.data.total_affected_items) * 100}%` }}
-                    />
-                  </div>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Version Distribution</h3>
+          <div className="space-y-4">
+            {Object.entries(stats.versionDistribution).map(([version, count]) => (
+              <div key={version}>
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span className="font-medium">{version}</span>
+                  <span>{count} ({((count / stats.total) * 100).toFixed(1)}%)</span>
                 </div>
-                <div className="w-12 text-right">{count}</div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-600 h-2 rounded-full"
+                    style={{ width: `${(count / stats.total) * 100}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -153,82 +164,65 @@ export default function AgentsVisualization({ agents }: AgentsVisualizationProps
       </div>
 
       {/* Agents Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('id')}
-                >
-                  ID <SortIcon field="id" />
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('name')}
-                >
-                  Name <SortIcon field="name" />
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('status')}
-                >
-                  Status <SortIcon field="status" />
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('os.platform')}
-                >
-                  OS <SortIcon field="os.platform" />
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('version')}
-                >
-                  Version <SortIcon field="version" />
-                </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('lastKeepAlive')}
-                >
-                  Last Keep Alive <SortIcon field="lastKeepAlive" />
-                </th>
+            <thead>
+              <tr className="bg-gray-50">
+                {[
+                  { key: 'id' as SortField, label: 'ID' },
+                  { key: 'name' as SortField, label: 'Name' },
+                  { key: 'status' as SortField, label: 'Status' },
+                  { key: 'os.platform' as SortField, label: 'OS' },
+                  { key: 'version' as SortField, label: 'Version' },
+                  { key: 'lastKeepAlive' as SortField, label: 'Last Keep Alive' }
+                ].map(({ key, label }) => (
+                  <th
+                    key={key}
+                    onClick={() => handleSort(key)}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>{label}</span>
+                      {sortField === key && (
+                        <span className="text-gray-400">
+                          {sortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
               {sortedAgents.map((agent) => (
-                <tr 
-                  key={agent.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
+                <tr
+                  key={agent.id}
                   onClick={() => setSelectedAgent(agent)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {agent.id}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {agent.name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      statusColors[agent.status as keyof typeof statusColors] || 'bg-blue-100 text-blue-800'
+                      agent.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
                     }`}>
                       {agent.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                     {agent.os.platform}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                     {agent.version}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                     {formatDate(agent.lastKeepAlive)}
                   </td>
                 </tr>
