@@ -20,6 +20,7 @@ mod syscollector;
 mod tasks;
 mod events;
 mod experimental;
+mod auth;
 
 pub fn create_router() -> Router {
     Router::new()
@@ -42,6 +43,7 @@ pub fn create_router() -> Router {
         .merge(tasks::routes())
         .merge(events::routes())
         .merge(experimental::routes())
+        .merge(auth::routes())
         .route("/health", get(health_check))
 }
 

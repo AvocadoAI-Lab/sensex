@@ -1,115 +1,133 @@
-const nodeFetch = require('node-fetch');
-const https = require('https');
+import { describe, expect, test } from '@jest/globals';
 const fs = require('fs');
 const path = require('path');
 
-import { BASE_URL, httpsAgent } from '../utils/auth-helper';
+// Point to our Rust proxy
+const BASE_URL = "http://127.0.0.1:3001";
+const WAZUH_URL = "https://wazuh.aixsoar.com:55000";
 
-const USERNAME = "wazuh-wui";
-const PASSWORD = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
-
-interface WazuhAuthResponse {
-    data?: {
-        token: string;
-    };
-    token?: string;
+interface AuthResponse {
+    token: string | null;
+    error: string | null;
 }
 
-describe('Wazuh Authentication Flow', () => {
+describe('Wazuh Authentication Flow Through Rust Proxy', () => {
     let authToken: string;
 
     // Create documentation
-    let documentation = '# Wazuh Authentication API Test Results\n\n';
+    let documentation = '# Wazuh Authentication API Test Results (Through Rust Proxy)\n\n';
     const appendToDoc = (section: string, content: any) => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
     const getAuthToken = async (): Promise<string> => {
-        const authUrl = `${BASE_URL}/security/user/authenticate`;
-        const authString = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
+        const authUrl = `${BASE_URL}/auth`;
         
-        const response = await nodeFetch(authUrl, {
-            method: 'GET',
+        const payload = {
+            endpoint: WAZUH_URL,
+            username: "wazuh-wui",
+            password: "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
+        };
+
+        const response = await fetch(authUrl, {
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${authString}`
+                'Content-Type': 'application/json'
             },
-            agent: httpsAgent
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error(`Authentication failed: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`Authentication failed: ${response.statusText}. ${errorText}`);
         }
 
-        const data = await response.json() as WazuhAuthResponse;
-        appendToDoc('Auth Token Response', data);
-        return data.token || (data.data && data.data.token) || '';
+        const data = await response.json() as AuthResponse;
+        appendToDoc('Auth Token Response Through Proxy', data);
+        
+        if (!data.token) {
+            throw new Error(data.error || 'No token received in response');
+        }
+        
+        return data.token;
     };
 
-    test('should authenticate successfully', async () => {
-        const authUrl = `${BASE_URL}/security/user/authenticate`;
-        const authString = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
+    test('should authenticate successfully through proxy', async () => {
+        const authUrl = `${BASE_URL}/auth`;
         
-        const response = await nodeFetch(authUrl, {
-            method: 'GET',
+        const payload = {
+            endpoint: WAZUH_URL,
+            username: "wazuh-wui",
+            password: "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
+        };
+
+        const response = await fetch(authUrl, {
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${authString}`
+                'Content-Type': 'application/json'
             },
-            agent: httpsAgent
+            body: JSON.stringify(payload)
         });
 
         expect(response.status).toBe(200);
-        const data = await response.json() as WazuhAuthResponse;
-        appendToDoc('Successful Authentication Response', data);
-        expect(data).toBeDefined();
+        const data = await response.json() as AuthResponse;
+        appendToDoc('Successful Authentication Response Through Proxy', data);
+        expect(data.token).toBeDefined();
+        expect(typeof data.token).toBe('string');
+        expect(data.token?.length).toBeGreaterThan(0);
     });
 
-    test('should fail with incorrect credentials', async () => {
-        const authUrl = `${BASE_URL}/security/user/authenticate`;
-        const wrongAuthString = Buffer.from(`${USERNAME}:wrong_password`).toString('base64');
+    test('should fail with incorrect credentials through proxy', async () => {
+        const authUrl = `${BASE_URL}/auth`;
         
-        const response = await nodeFetch(authUrl, {
-            method: 'GET',
+        const payload = {
+            endpoint: WAZUH_URL,
+            username: "wazuh-wui",
+            password: "wrong_password"
+        };
+
+        const response = await fetch(authUrl, {
+            method: 'POST',
             headers: {
-                'Authorization': `Basic ${wrongAuthString}`
+                'Content-Type': 'application/json'
             },
-            agent: httpsAgent
+            body: JSON.stringify(payload)
         });
 
         expect(response.status).toBe(401);
-        try {
-            const errorData = await response.json();
-            appendToDoc('Failed Authentication Response', errorData);
-        } catch (e) {
-            const errorText = await response.text();
-            appendToDoc('Failed Authentication Response', { error: errorText });
-        }
+        const data = await response.json() as AuthResponse;
+        appendToDoc('Failed Authentication Response Through Proxy', data);
+        expect(data.error).toBeDefined();
     });
 
-    test('should obtain valid token', async () => {
+    test('should obtain valid token through proxy', async () => {
         authToken = await getAuthToken();
-        appendToDoc('Valid Token', { token: authToken });
+        appendToDoc('Valid Token Through Proxy', { token: authToken });
         expect(authToken).toBeDefined();
         expect(typeof authToken).toBe('string');
         expect(authToken.length).toBeGreaterThan(0);
     });
 
-    test('should access protected endpoint with token', async () => {
+    test('should access protected endpoint through proxy with token', async () => {
         if (!authToken) {
             authToken = await getAuthToken();
         }
 
         const testUrl = `${BASE_URL}/agents`;
-        const response = await nodeFetch(testUrl, {
-            method: 'GET',
+        const response = await fetch(testUrl, {
+            method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Content-Type': 'application/json'
             },
-            agent: httpsAgent
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: authToken
+            })
         });
 
         expect(response.status).toBe(200);
         const data = await response.json();
-        appendToDoc('Protected Endpoint Response', data);
+        appendToDoc('Protected Endpoint Response Through Proxy', data);
         expect(data).toBeDefined();
     });
 
