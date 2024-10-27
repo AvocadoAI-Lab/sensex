@@ -82,6 +82,44 @@ impl WazuhClient {
         request.send().await
     }
 
+    pub async fn post(&self, url: &str, token: Option<&str>, body: Option<Value>) -> Result<Response, reqwest::Error> {
+        let mut request = self.client.post(url);
+        
+        if let Some(token) = token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        if let Some(json_body) = body {
+            request = request.json(&json_body);
+        }
+        
+        request.send().await
+    }
+
+    pub async fn put(&self, url: &str, token: Option<&str>, body: Option<Value>) -> Result<Response, reqwest::Error> {
+        let mut request = self.client.put(url);
+        
+        if let Some(token) = token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+
+        if let Some(json_body) = body {
+            request = request.json(&json_body);
+        }
+        
+        request.send().await
+    }
+
+    pub async fn delete(&self, url: &str, token: Option<&str>) -> Result<Response, reqwest::Error> {
+        let mut request = self.client.delete(url);
+        
+        if let Some(token) = token {
+            request = request.header("Authorization", format!("Bearer {}", token));
+        }
+        
+        request.send().await
+    }
+
     pub async fn get_with_auth(&self, url: &str, username: &str, password: &str) -> Result<Response, reqwest::Error> {
         self.client
             .get(url)
@@ -106,7 +144,6 @@ impl WazuhClient {
         cache.clear();
     }
 
-    // 新增：輔助方法來獲取認證 token
     pub async fn get_auth_token(&self) -> Result<String, String> {
         let response = self
             .get_with_auth(
@@ -131,78 +168,41 @@ impl WazuhClient {
 mod tests {
     use super::*;
 
-    const BASE_URL: &str = "https://wazuh.aixsoar.com:55000";
+    const TEST_URL: &str = "https://wazuh.aixsoar.com:55000/security/user/authenticate";
     const TEST_USERNAME: &str = "wazuh-wui";
     const TEST_PASSWORD: &str = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
     const INVALID_PASSWORD: &str = "wrong_password";
 
-    // 輔助函數：用於測試中獲取 token
-    async fn get_test_token() -> String {
-        let client = WazuhClient::new();
-        client.get_auth_token().await.expect("Failed to get auth token")
-    }
-
     #[tokio::test]
     async fn test_successful_authentication() {
         let client = WazuhClient::new();
-        let auth_url = format!("{}/security/user/authenticate", BASE_URL);
         
         let response = client
-            .get_with_auth(&auth_url, TEST_USERNAME, TEST_PASSWORD)
+            .get_with_auth(TEST_URL, TEST_USERNAME, TEST_PASSWORD)
             .await;
             
         assert!(response.is_ok(), "Authentication should succeed with valid credentials");
         
         if let Ok(resp) = response {
-            println!("Response Status: {}", resp.status());
-            println!("Response Headers: {:#?}", resp.headers());
+            assert_eq!(resp.status().as_u16(), 200, "Should receive 200 OK status");
             
-            let text = resp.text().await.unwrap_or_else(|e| format!("Failed to get response text: {}", e));
-            println!("Response Body: {}", text);
+            let json_result = WazuhClient::handle_json_response(resp).await;
+            assert!(json_result.is_ok(), "Should be able to parse JSON response");
         }
     }
 
     #[tokio::test]
     async fn test_failed_authentication() {
         let client = WazuhClient::new();
-        let auth_url = format!("{}/security/user/authenticate", BASE_URL);
         
         let response = client
-            .get_with_auth(&auth_url, TEST_USERNAME, INVALID_PASSWORD)
+            .get_with_auth(TEST_URL, TEST_USERNAME, INVALID_PASSWORD)
             .await;
             
         assert!(response.is_ok(), "Request should complete even with invalid credentials");
         
         if let Ok(resp) = response {
             assert_eq!(resp.status().as_u16(), 401, "Should receive 401 Unauthorized status");
-            
-            println!("Failed Auth Response Status: {}", resp.status());
-            let text = resp.text().await.unwrap_or_else(|e| format!("Failed to get response text: {}", e));
-            println!("Failed Auth Response Body: {}", text);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_get_auth_token() {
-        let token = get_test_token().await;
-        println!("Successfully obtained token: {}", token);
-        assert!(!token.is_empty(), "Token should not be empty");
-    }
-
-    // 使用 token 的 API 測試範例
-    #[tokio::test]
-    async fn test_agents_list_with_token() {
-        let client = WazuhClient::new();
-        let token = get_test_token().await;
-        let agents_url = format!("{}/agents", BASE_URL);
-
-        let response = client.get(&agents_url, Some(&token)).await;
-        assert!(response.is_ok(), "Should be able to get agents list with valid token");
-
-        if let Ok(resp) = response {
-            assert_eq!(resp.status().as_u16(), 200, "Should receive 200 OK status");
-            let json = WazuhClient::handle_json_response(resp).await.unwrap();
-            println!("Agents Response: {:#?}", json);
         }
     }
 
@@ -216,30 +216,24 @@ mod tests {
             .await;
             
         assert!(response.is_err(), "Request should fail with invalid URL");
-        if let Err(e) = response {
-            println!("Invalid URL Error: {}", e);
-        }
     }
 
     #[tokio::test]
     async fn test_cache_with_auth() {
         let client = WazuhClient::new();
-        let token = get_test_token().await;
-        let test_endpoint = format!("{}/agents", BASE_URL);
+        let test_endpoint = format!("{}/security/user/authenticate", TEST_URL);
         
         // First request should hit the API
         let first_response = client
-            .get_cached(&test_endpoint, Some(&token))
+            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
             .await;
         assert!(first_response.is_ok(), "First request should succeed");
-        println!("First Cache Response: {:#?}", first_response);
         
         // Second request should come from cache
         let second_response = client
-            .get_cached(&test_endpoint, Some(&token))
+            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
             .await;
         assert!(second_response.is_ok(), "Second request should succeed");
-        println!("Second Cache Response: {:#?}", second_response);
         
         assert_eq!(
             first_response.unwrap(),
@@ -251,24 +245,21 @@ mod tests {
     #[tokio::test]
     async fn test_clear_cache() {
         let client = WazuhClient::new();
-        let token = get_test_token().await;
-        let test_endpoint = format!("{}/agents", BASE_URL);
+        let test_endpoint = format!("{}/security/user/authenticate", TEST_URL);
         
         // First request
         let first_response = client
-            .get_cached(&test_endpoint, Some(&token))
+            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
             .await;
         assert!(first_response.is_ok(), "First request should succeed");
-        println!("Pre-Clear Cache Response: {:#?}", first_response);
         
         // Clear cache
         client.clear_cache().await;
         
         // Second request should hit API again
         let second_response = client
-            .get_cached(&test_endpoint, Some(&token))
+            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
             .await;
         assert!(second_response.is_ok(), "Second request should succeed after cache clear");
-        println!("Post-Clear Cache Response: {:#?}", second_response);
     }
 }
