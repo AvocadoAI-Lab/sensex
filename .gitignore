@@ -41,3 +41,4 @@ next-env.d.ts
 /src/backend/target
 .idea/
 /wazuh_api_spec.yaml
+/src/app/docs/

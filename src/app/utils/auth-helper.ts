@@ -48,12 +48,17 @@ export async function makeAuthorizedRequest(
     
     console.log(`Making ${method} request to: ${url}`);
     
+    const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`
+    };
+
+    if (method !== 'GET') {
+        headers['Content-Type'] = 'application/json';
+    }
+    
     const response = await nodeFetch(url, {
         method,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
+        headers,
         body: body ? JSON.stringify(body) : undefined,
         agent: httpsAgent
     });
