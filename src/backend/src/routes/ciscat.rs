@@ -1,10 +1,7 @@
-use axum::{
-    Router,
-    routing::get,
-};
-use crate::handlers::ciscat::*;
+use axum::Router;
 
 pub fn routes() -> Router {
     Router::new()
-        .route("/ciscat/:agent_id/results", get(get_agent_ciscat_results))
+    // All endpoints failing with 405/404
+    // Routes removed until proper endpoint support is implemented
 }
