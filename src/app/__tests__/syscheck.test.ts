@@ -20,7 +20,7 @@ describe('Wazuh Syscheck API Flow', () => {
         } else {
             console.log('No agents available for testing');
         }
-    });
+    }, 30000);
 
     test('should get syscheck files for agent', async () => {
         if (!agentId) {
@@ -37,10 +37,10 @@ describe('Wazuh Syscheck API Flow', () => {
         appendToDoc('Syscheck Files', response);
     }, 30000);
 
-    test('should get syscheck last scan for agent', async () => {
+    test('should get syscheck last scan info', async () => {
         if (!agentId) {
-            console.log('No agent available, skipping syscheck last scan test');
-            appendToDoc('Syscheck Last Scan', { message: 'Test skipped - No agent available' });
+            console.log('No agent available, skipping last scan test');
+            appendToDoc('Last Scan Info', { message: 'Test skipped - No agent available' });
             return;
         }
 
@@ -49,22 +49,25 @@ describe('Wazuh Syscheck API Flow', () => {
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
-        appendToDoc('Syscheck Last Scan', response);
+        appendToDoc('Last Scan Info', response);
     }, 30000);
 
-    test('should get syscheck summary for agent', async () => {
+    test('should get syscheck stats', async () => {
         if (!agentId) {
-            console.log('No agent available, skipping syscheck summary test');
-            appendToDoc('Syscheck Summary', { message: 'Test skipped - No agent available' });
+            console.log('No agent available, skipping syscheck stats test');
+            appendToDoc('Syscheck Stats', { message: 'Test skipped - No agent available' });
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/summary`);
+        const response = await makeAuthorizedRequest(`/agents/${agentId}/stats/agent`);
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
-        appendToDoc('Syscheck Summary', response);
+        appendToDoc('Syscheck Stats', {
+            description: 'Agent statistics including syscheck information',
+            response: response
+        });
     }, 30000);
 
     afterAll(() => {

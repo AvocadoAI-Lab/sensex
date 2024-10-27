@@ -7,31 +7,60 @@ describe('Wazuh Experimental API Flow', () => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
+    let experimentalEnabled = true;
+
+    beforeAll(async () => {
+        try {
+            await makeAuthorizedRequest('/experimental/ciscat/results');
+        } catch (err) {
+            const error = err as Error;
+            if (error && error.message && error.message.includes('Experimental features are disabled')) {
+                console.log('Experimental features are disabled, skipping tests');
+                experimentalEnabled = false;
+            }
+        }
+    }, 30000);
+
     test('should get experimental CIS-CAT results', async () => {
+        if (!experimentalEnabled) {
+            console.log('Skipping experimental CIS-CAT test - features disabled');
+            appendToDoc('Experimental CIS-CAT Results', { 
+                message: 'Test skipped - Experimental features disabled'
+            });
+            return;
+        }
+
         const response = await makeAuthorizedRequest('/experimental/ciscat/results');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
-        appendToDoc('Experimental CIS-CAT Results', {
-            description: 'Results from experimental CIS-CAT scan',
-            response: response
-        });
+        appendToDoc('Experimental CIS-CAT Results', response);
     }, 30000);
 
     test('should test experimental rules', async () => {
+        if (!experimentalEnabled) {
+            console.log('Skipping experimental rules test - features disabled');
+            appendToDoc('Experimental Rules Test', { 
+                message: 'Test skipped - Experimental features disabled'
+            });
+            return;
+        }
+
         const testRule = {
-            rule: {
-                level: 5,
-                description: "Test experimental rule",
-                id: "100001",
-                pattern: "test pattern"
-            }
+            decoder: {
+                name: "test_decoder",
+                parent: "json",
+                program_name: "test_program"
+            },
+            location: "test_location",
+            log_format: "test_format",
+            log_string: "test string"
         };
 
         const response = await makeAuthorizedRequest(
-            '/experimental/rules',
-            'POST',
+            '/experimental/rules/test',
+            'PUT',
             testRule
         );
         
@@ -39,24 +68,34 @@ describe('Wazuh Experimental API Flow', () => {
         expect(response.data).toBeDefined();
         
         appendToDoc('Experimental Rules Test', {
-            description: 'Testing experimental rule creation',
             request: testRule,
             response: response
         });
     }, 30000);
 
     test('should test experimental decoders', async () => {
+        if (!experimentalEnabled) {
+            console.log('Skipping experimental decoders test - features disabled');
+            appendToDoc('Experimental Decoders Test', { 
+                message: 'Test skipped - Experimental features disabled'
+            });
+            return;
+        }
+
         const testDecoder = {
             decoder: {
                 name: "test_decoder",
-                program_name: "test_program",
-                pattern: "test pattern"
-            }
+                parent: "json",
+                program_name: "test_program"
+            },
+            location: "test_location",
+            log_format: "test_format",
+            log_string: "test string"
         };
 
         const response = await makeAuthorizedRequest(
-            '/experimental/decoders',
-            'POST',
+            '/experimental/decoders/test',
+            'PUT',
             testDecoder
         );
         
@@ -64,7 +103,6 @@ describe('Wazuh Experimental API Flow', () => {
         expect(response.data).toBeDefined();
         
         appendToDoc('Experimental Decoders Test', {
-            description: 'Testing experimental decoder creation',
             request: testDecoder,
             response: response
         });

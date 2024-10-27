@@ -20,7 +20,7 @@ describe('Wazuh SCA (Security Configuration Assessment) API Flow', () => {
         } else {
             console.log('No agents available for testing');
         }
-    });
+    }, 30000);
 
     test('should get SCA policies for agent', async () => {
         if (!agentId) {
@@ -29,27 +29,55 @@ describe('Wazuh SCA (Security Configuration Assessment) API Flow', () => {
             return;
         }
 
+        // Get agent's SCA policies
         const response = await makeAuthorizedRequest(`/sca/${agentId}/policies`);
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
         appendToDoc('SCA Policies', response);
+    }, 30000);
 
-        // If we get policies, let's also test getting checks and results for the first policy
-        if (response.data.affected_items && response.data.affected_items.length > 0) {
-            const policyId = response.data.affected_items[0].policy_id;
-            
-            // Get checks for this policy
-            const checksResponse = await makeAuthorizedRequest(`/sca/${agentId}/checks/${policyId}`);
-            expect(checksResponse).toBeDefined();
-            appendToDoc(`SCA Checks for Policy ${policyId}`, checksResponse);
-
-            // Get results for this policy
-            const resultsResponse = await makeAuthorizedRequest(`/sca/${agentId}/results/${policyId}`);
-            expect(resultsResponse).toBeDefined();
-            appendToDoc(`SCA Results for Policy ${policyId}`, resultsResponse);
+    test('should get SCA checks for policy', async () => {
+        if (!agentId) {
+            console.log('No agent available, skipping SCA checks test');
+            appendToDoc('SCA Checks', { message: 'Test skipped - No agent available' });
+            return;
         }
+
+        // First get available policies
+        const policiesResponse = await makeAuthorizedRequest(`/sca/${agentId}/policies`);
+        
+        if (policiesResponse.data.affected_items && policiesResponse.data.affected_items.length > 0) {
+            const policyId = policiesResponse.data.affected_items[0].policy_id;
+            
+            // Get checks for the first policy
+            const response = await makeAuthorizedRequest(`/sca/${agentId}/checks/${policyId}`);
+            
+            expect(response).toBeDefined();
+            expect(response.data).toBeDefined();
+            
+            appendToDoc('SCA Checks', response);
+        } else {
+            console.log('No policies available for SCA checks test');
+            appendToDoc('SCA Checks', { message: 'Test skipped - No policies available' });
+        }
+    }, 30000);
+
+    test('should get SCA scan results', async () => {
+        if (!agentId) {
+            console.log('No agent available, skipping SCA scan results test');
+            appendToDoc('SCA Scan Results', { message: 'Test skipped - No agent available' });
+            return;
+        }
+
+        // Get agent's SCA scan results
+        const response = await makeAuthorizedRequest(`/sca/${agentId}/results`);
+        
+        expect(response).toBeDefined();
+        expect(response.data).toBeDefined();
+        
+        appendToDoc('SCA Scan Results', response);
     }, 30000);
 
     afterAll(() => {

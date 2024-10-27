@@ -7,8 +7,17 @@ describe('Wazuh Statistics API Flow', () => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
-    test('should get hourly statistics', async () => {
-        const response = await makeAuthorizedRequest('/statistics/hourly');
+    test('should get manager stats', async () => {
+        const response = await makeAuthorizedRequest('/manager/stats');
+        
+        expect(response).toBeDefined();
+        expect(response.data).toBeDefined();
+        
+        appendToDoc('Manager Statistics', response);
+    }, 30000);
+
+    test('should get manager stats by hour', async () => {
+        const response = await makeAuthorizedRequest('/manager/stats/hourly');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -16,8 +25,8 @@ describe('Wazuh Statistics API Flow', () => {
         appendToDoc('Hourly Statistics', response);
     }, 30000);
 
-    test('should get weekly statistics', async () => {
-        const response = await makeAuthorizedRequest('/statistics/weekly');
+    test('should get manager stats by week', async () => {
+        const response = await makeAuthorizedRequest('/manager/stats/weekly');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -25,28 +34,22 @@ describe('Wazuh Statistics API Flow', () => {
         appendToDoc('Weekly Statistics', response);
     }, 30000);
 
-    test('should get analysisd statistics', async () => {
-        const response = await makeAuthorizedRequest('/statistics/analysisd');
+    test('should get manager stats by analyzer', async () => {
+        const response = await makeAuthorizedRequest('/manager/stats/analysisd');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
-        appendToDoc('Analysisd Statistics', {
-            description: 'Statistics from the analysis daemon (analysisd)',
-            response: response
-        });
+        appendToDoc('Analyzer Statistics', response);
     }, 30000);
 
-    test('should get remoted statistics', async () => {
-        const response = await makeAuthorizedRequest('/statistics/remoted');
+    test('should get manager stats by remote', async () => {
+        const response = await makeAuthorizedRequest('/manager/stats/remoted');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
-        appendToDoc('Remoted Statistics', {
-            description: 'Statistics from the remote daemon (remoted)',
-            response: response
-        });
+        appendToDoc('Remote Statistics', response);
     }, 30000);
 
     afterAll(() => {

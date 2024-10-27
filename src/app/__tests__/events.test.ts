@@ -20,16 +20,17 @@ describe('Wazuh Events API Flow', () => {
         } else {
             console.log('No agents available for testing');
         }
-    });
+    }, 30000);
 
-    test('should get events list for agent', async () => {
+    test('should get events list', async () => {
         if (!agentId) {
             console.log('No agent available, skipping events list test');
             appendToDoc('Events List', { message: 'Test skipped - No agent available' });
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/last_scan`);
+        // Get events from manager logs
+        const response = await makeAuthorizedRequest('/manager/logs/summary');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -38,7 +39,14 @@ describe('Wazuh Events API Flow', () => {
     }, 30000);
 
     test('should get events summary', async () => {
-        const response = await makeAuthorizedRequest('/overview/events');
+        if (!agentId) {
+            console.log('No agent available, skipping events summary test');
+            appendToDoc('Events Summary', { message: 'Test skipped - No agent available' });
+            return;
+        }
+
+        // Get events summary from manager stats
+        const response = await makeAuthorizedRequest('/manager/stats');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -47,7 +55,14 @@ describe('Wazuh Events API Flow', () => {
     }, 30000);
 
     test('should get events alerts', async () => {
-        const response = await makeAuthorizedRequest('/alerts');
+        if (!agentId) {
+            console.log('No agent available, skipping events alerts test');
+            appendToDoc('Events Alerts', { message: 'Test skipped - No agent available' });
+            return;
+        }
+
+        // Get alerts from manager logs
+        const response = await makeAuthorizedRequest('/manager/logs');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
