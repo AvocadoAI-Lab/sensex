@@ -12,5 +12,16 @@ mod syscollector_tests;
 mod sca_tests;
 mod mitre_tests;
 mod lifecycle_tests;
+mod ciscat_tests;
+mod rootcheck_tests;
+mod syscheck_tests;
+mod events_tests;
+mod logtest_tests;
+mod tasks_tests;
+mod lists_tests;
+mod experimental_tests;
+mod vulnerability_tests;
+mod statistics_tests;
+mod overview_tests;
 
 // 將來可以添加更多測試模組...

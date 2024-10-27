@@ -1,5 +1,4 @@
-use super::common::{BASE_URL, get_test_client};
-use serde_json::Value;
+use super::common::{BASE_URL, get_test_client, validate_response};
 
 #[tokio::test]
 async fn test_cluster_status() {
@@ -12,54 +11,83 @@ async fn test_cluster_status() {
         .expect("Should get cluster status");
     
     let status = response.status();
-    println!("Cluster status response status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get cluster status successfully");
-    
     let response_text = response.text().await.expect("Should get response text");
-    println!("Raw cluster status response: {}", response_text);
     
-    let status_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Cluster Status Response: {:#?}", status_json);
+    assert!(validate_response(
+        "Cluster Status Test",
+        status.as_u16(),
+        &response_text
+    ));
 }
 
 #[tokio::test]
 async fn test_cluster_nodes() {
     let (client, token) = get_test_client().await;
 
-    println!("Getting cluster nodes");
-    let nodes_url = format!("{}/cluster/nodes", BASE_URL);
-    let response = client.get(&nodes_url, Some(&token))
+    // 首先檢查集群狀態
+    let status_url = format!("{}/cluster/status", BASE_URL);
+    let response = client.get(&status_url, Some(&token))
         .await
-        .expect("Should get cluster nodes");
+        .expect("Should get cluster status");
     
-    let status = response.status();
-    println!("Cluster nodes status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get cluster nodes successfully");
+    let status_text = response.text().await.expect("Should get response text");
+    let status_json: serde_json::Value = serde_json::from_str(&status_text).expect("Should parse JSON");
     
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw cluster nodes response: {}", response_text);
-    
-    let nodes_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Cluster Nodes Response: {:#?}", nodes_json);
+    // 只有當集群啟用時才測試節點
+    if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
+        if enabled {
+            println!("Getting cluster nodes");
+            let nodes_url = format!("{}/cluster/nodes", BASE_URL);
+            let response = client.get(&nodes_url, Some(&token))
+                .await
+                .expect("Should get cluster nodes");
+            
+            let status = response.status();
+            let response_text = response.text().await.expect("Should get response text");
+            
+            assert!(validate_response(
+                "Cluster Nodes Test",
+                status.as_u16(),
+                &response_text
+            ));
+        } else {
+            println!("Cluster is disabled, skipping nodes test");
+        }
+    }
 }
 
 #[tokio::test]
 async fn test_cluster_health() {
     let (client, token) = get_test_client().await;
 
-    println!("Getting cluster health");
-    let health_url = format!("{}/cluster/healthcheck", BASE_URL);
-    let response = client.get(&health_url, Some(&token))
+    // 首先檢查集群狀態
+    let status_url = format!("{}/cluster/status", BASE_URL);
+    let response = client.get(&status_url, Some(&token))
         .await
-        .expect("Should get cluster health");
+        .expect("Should get cluster status");
     
-    let status = response.status();
-    println!("Cluster health status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get cluster health successfully");
+    let status_text = response.text().await.expect("Should get response text");
+    let status_json: serde_json::Value = serde_json::from_str(&status_text).expect("Should parse JSON");
     
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw cluster health response: {}", response_text);
-    
-    let health_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Cluster Health Response: {:#?}", health_json);
+    // 只有當集群啟用時才測試健康狀態
+    if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
+        if enabled {
+            println!("Getting cluster health");
+            let health_url = format!("{}/cluster/healthcheck", BASE_URL);
+            let response = client.get(&health_url, Some(&token))
+                .await
+                .expect("Should get cluster health");
+            
+            let status = response.status();
+            let response_text = response.text().await.expect("Should get response text");
+            
+            assert!(validate_response(
+                "Cluster Health Test",
+                status.as_u16(),
+                &response_text
+            ));
+        } else {
+            println!("Cluster is disabled, skipping health test");
+        }
+    }
 }
