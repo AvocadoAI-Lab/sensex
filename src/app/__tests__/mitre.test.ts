@@ -8,7 +8,7 @@ describe('Wazuh MITRE API Flow', () => {
     };
 
     test('should get MITRE metadata', async () => {
-        const response = await makeAuthorizedRequest('/mitre/metadata');
+        const response = await makeAuthorizedRequest('/mitre/metadata', 'POST');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -17,7 +17,7 @@ describe('Wazuh MITRE API Flow', () => {
     }, 30000);
 
     test('should get MITRE tactics', async () => {
-        const response = await makeAuthorizedRequest('/mitre/tactics');
+        const response = await makeAuthorizedRequest('/mitre/tactics', 'POST');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -26,7 +26,7 @@ describe('Wazuh MITRE API Flow', () => {
     }, 30000);
 
     test('should get MITRE techniques', async () => {
-        const response = await makeAuthorizedRequest('/mitre/techniques');
+        const response = await makeAuthorizedRequest('/mitre/techniques', 'POST');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -35,7 +35,7 @@ describe('Wazuh MITRE API Flow', () => {
     }, 30000);
 
     test('should get MITRE references', async () => {
-        const response = await makeAuthorizedRequest('/mitre/references');
+        const response = await makeAuthorizedRequest('/mitre/references', 'POST');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
