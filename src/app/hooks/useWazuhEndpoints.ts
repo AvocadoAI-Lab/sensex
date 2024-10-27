@@ -1,6 +1,40 @@
 import { useState } from 'react';
 import { WazuhResponse, AllResponses } from '../types/responses';
 
+// Map endpoint keys to their actual API paths
+const endpointPaths: Record<keyof AllResponses, string> = {
+  agents: 'agents',
+  clusterStatus: 'cluster/status',
+  managerStatus: 'manager/status',
+  managerInfo: 'manager/info',
+  clusterLocalInfo: 'cluster/local/info',
+  rules: 'rules',
+  decoders: 'decoders',
+  managerLogs: 'manager/logs',
+  managerStats: 'manager/stats',
+  groups: 'groups',
+  groupFiles: 'groups/files',
+  groupAgents: 'groups/agents',
+  syscollectorHardware: 'syscollector/hardware',
+  syscollectorOs: 'syscollector/os',
+  syscheckFiles: 'syscheck/files',
+  syscheckLastScan: 'syscheck/last_scan',
+  activeResponseCommands: 'active-response/commands',
+  activeResponseRun: 'active-response/run',
+  securityUsers: 'security/users',
+  securityRoles: 'security/roles',
+  securityPolicies: 'security/policies',
+  mitreMetadata: 'mitre/metadata',
+  mitreTechniques: 'mitre/techniques',
+  mitreTactics: 'mitre/tactics',
+  tasks: 'tasks',
+  tasksStatus: 'tasks/status',
+  tasksResult: 'tasks/result',
+  scaChecks: 'sca/checks',
+  scaResults: 'sca/results',
+  scaPolicies: 'sca/policies'
+};
+
 export const useWazuhEndpoints = () => {
   const [responses, setResponses] = useState<AllResponses>({
     agents: null,
@@ -36,13 +70,12 @@ export const useWazuhEndpoints = () => {
   });
 
   const fetchEndpoint = async (
-    path: string,
+    key: keyof AllResponses,
     authToken: string,
-    endpoint: string,
-    responseKey: keyof AllResponses
+    endpoint: string
   ) => {
     try {
-      const response = await fetch(`/api/${path}`, {
+      const response = await fetch(`/api/${endpointPaths[key]}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -53,55 +86,29 @@ export const useWazuhEndpoints = () => {
         }),
       });
       const data = await response.json();
-      setResponses(prev => ({
-        ...prev,
-        [responseKey]: data
-      }));
-      return data;
+      return { key, data };
     } catch (error) {
-      const errorResponse = { error: (error as Error).message };
-      setResponses(prev => ({
-        ...prev,
-        [responseKey]: errorResponse
-      }));
-      return errorResponse;
+      return { key, data: { error: (error as Error).message } };
     }
   };
 
   const fetchAllEndpoints = async (authToken: string, endpoint: string) => {
-    // Existing endpoints
-    await fetchEndpoint('agents', authToken, endpoint, 'agents');
-    await fetchEndpoint('cluster/status', authToken, endpoint, 'clusterStatus');
-    await fetchEndpoint('manager/status', authToken, endpoint, 'managerStatus');
-    await fetchEndpoint('manager/info', authToken, endpoint, 'managerInfo');
-    await fetchEndpoint('cluster/local/info', authToken, endpoint, 'clusterLocalInfo');
-    await fetchEndpoint('rules', authToken, endpoint, 'rules');
-    await fetchEndpoint('decoders', authToken, endpoint, 'decoders');
-    await fetchEndpoint('manager/logs', authToken, endpoint, 'managerLogs');
-    await fetchEndpoint('manager/stats', authToken, endpoint, 'managerStats');
+    // Create array of all endpoint keys
+    const endpointKeys = Object.keys(endpointPaths) as Array<keyof AllResponses>;
 
-    // New endpoints
-    await fetchEndpoint('groups', authToken, endpoint, 'groups');
-    await fetchEndpoint('groups/files', authToken, endpoint, 'groupFiles');
-    await fetchEndpoint('groups/agents', authToken, endpoint, 'groupAgents');
-    await fetchEndpoint('syscollector/hardware', authToken, endpoint, 'syscollectorHardware');
-    await fetchEndpoint('syscollector/os', authToken, endpoint, 'syscollectorOs');
-    await fetchEndpoint('syscheck/files', authToken, endpoint, 'syscheckFiles');
-    await fetchEndpoint('syscheck/last_scan', authToken, endpoint, 'syscheckLastScan');
-    await fetchEndpoint('active-response/commands', authToken, endpoint, 'activeResponseCommands');
-    await fetchEndpoint('active-response/run', authToken, endpoint, 'activeResponseRun');
-    await fetchEndpoint('security/users', authToken, endpoint, 'securityUsers');
-    await fetchEndpoint('security/roles', authToken, endpoint, 'securityRoles');
-    await fetchEndpoint('security/policies', authToken, endpoint, 'securityPolicies');
-    await fetchEndpoint('mitre/metadata', authToken, endpoint, 'mitreMetadata');
-    await fetchEndpoint('mitre/techniques', authToken, endpoint, 'mitreTechniques');
-    await fetchEndpoint('mitre/tactics', authToken, endpoint, 'mitreTactics');
-    await fetchEndpoint('tasks', authToken, endpoint, 'tasks');
-    await fetchEndpoint('tasks/status', authToken, endpoint, 'tasksStatus');
-    await fetchEndpoint('tasks/result', authToken, endpoint, 'tasksResult');
-    await fetchEndpoint('sca/checks', authToken, endpoint, 'scaChecks');
-    await fetchEndpoint('sca/results', authToken, endpoint, 'scaResults');
-    await fetchEndpoint('sca/policies', authToken, endpoint, 'scaPolicies');
+    // Fetch all endpoints in parallel
+    const results = await Promise.all(
+      endpointKeys.map(key => fetchEndpoint(key, authToken, endpoint))
+    );
+
+    // Update state with all results at once
+    setResponses(prev => {
+      const newResponses = { ...prev };
+      results.forEach(result => {
+        newResponses[result.key] = result.data;
+      });
+      return newResponses;
+    });
   };
 
   return {

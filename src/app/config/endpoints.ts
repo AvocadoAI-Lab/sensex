@@ -1,3 +1,5 @@
+import { AllResponses } from '../types/responses';
+
 type EndpointGroup = {
   title: string;
   endpoints: {

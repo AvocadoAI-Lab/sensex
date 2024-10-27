@@ -1,5 +1,5 @@
 import EndpointCard from './EndpointCard';
-import { AllResponses } from '../types/responses';
+import { AllResponses, WazuhResponse } from '../types/responses';
 
 interface EndpointGroupProps {
   title: string;
@@ -19,7 +19,7 @@ export default function EndpointGroup({ title, endpoints, responses }: EndpointG
           <EndpointCard
             key={endpoint.key}
             title={endpoint.title}
-            response={responses[endpoint.key] as any}
+            response={responses[endpoint.key] as WazuhResponse | null}
           />
         ))}
       </div>
