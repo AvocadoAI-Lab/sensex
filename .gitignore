@@ -39,5 +39,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /src/backend/target
-/src/documents
 .idea/
+/wazuh_api_spec.yaml

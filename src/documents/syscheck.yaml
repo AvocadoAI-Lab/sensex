@@ -1,0 +1,525 @@
+openapi: 3.0.0
+paths:
+  /syscheck:
+    put:
+      tags:
+      - Syscheck
+      summary: Run scan
+      description: Run FIM scan in all agents
+      operationId: api.controllers.syscheck_controller.put_syscheck
+      x-rbac-actions:
+      - $ref: '#/x-rbac-catalog/actions/syscheck:run'
+      parameters:
+      - $ref: '#/components/parameters/agents_list'
+      - $ref: '#/components/parameters/pretty'
+      - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+              example:
+                data:
+                  affected_items:
+                  - '000'
+                  - '001'
+                  - '002'
+                  - '003'
+                  total_affected_items: 4
+                  total_failed_items: 0
+                  failed_items: []
+                message: Syscheck scan was restarted on returned agents
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  /syscheck/{agent_id}:
+    get:
+      tags:
+      - Syscheck
+      summary: Get results
+      description: Return FIM findings in the specified agent
+      operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      x-rbac-actions:
+      - $ref: '#/x-rbac-catalog/actions/syscheck:read'
+      parameters:
+      - $ref: '#/components/parameters/agent_id'
+      - $ref: '#/components/parameters/pretty'
+      - $ref: '#/components/parameters/wait_for_complete'
+      - $ref: '#/components/parameters/offset'
+      - $ref: '#/components/parameters/limit'
+      - $ref: '#/components/parameters/sort'
+      - $ref: '#/components/parameters/search'
+      - $ref: '#/components/parameters/select'
+      - $ref: '#/components/parameters/full_path_filter'
+      - $ref: '#/components/parameters/syscheck_arch'
+      - $ref: '#/components/parameters/value.name'
+      - $ref: '#/components/parameters/value.type'
+      - $ref: '#/components/parameters/filetype'
+      - $ref: '#/components/parameters/summary'
+      - $ref: '#/components/parameters/md5'
+      - $ref: '#/components/parameters/sha1'
+      - $ref: '#/components/parameters/sha256'
+      - $ref: '#/components/parameters/hashfilter'
+      - $ref: '#/components/parameters/distinct'
+      - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: Latest syscheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AllItemsResponseSyscheckResult'
+              example:
+                data:
+                  affected_items:
+                  - changes: 1
+                    date: '2019-11-22T10:24:52Z'
+                    file: /etc/dpkg/origins/debian
+                    gid: '0'
+                    gname: root
+                    inode: 1459742
+                    md5: 731423fa8ba067262f8ef37882d1e742
+                    mtime: '2009-02-02T23:06:58Z'
+                    perm: '100644'
+                    sha1: b65f7f2af66c53b51765877bbe91a22bc6fca1e2
+                    sha256: 50f35af8ac4a5df3690991a4b428fa49d56580b0020fcc6e38283b3b1b2e6c74
+                    size: 82
+                    type: file
+                    uid: '0'
+                    uname: root
+                    attributes: ''
+                  - changes: 1
+                    date: '2019-11-22T10:24:56Z'
+                    file: /etc/sgml/xml-core.cat
+                    gid: '0'
+                    gname: root
+                    inode: 2896763
+                    md5: 055ba0bd3154c0a58b9bf8a0c9ecf2fa
+                    mtime: '2012-11-07T21:44:21Z'
+                    perm: '100644'
+                    sha1: 3dec5570307472381671ff18bbe4d4be09951690
+                    sha256: 3c46704b553c4b55ce928ffe89badfcfd08a02f0e6558211dfd57d9ae1e72aa4
+                    size: 45
+                    type: file
+                    uid: '0'
+                    uname: root
+                    attributes: ''
+                  total_affected_items: 1433
+                  total_failed_items: 0
+                  failed_items: []
+                message: FIM findings of the agent were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Syscheck
+      summary: Clear results
+      description: Clear file integrity monitoring scan results for a specified agent.
+        Only available for agents < 3.12.0, it doesn't apply for more recent ones
+      operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      x-rbac-actions:
+      - $ref: '#/x-rbac-catalog/actions/syscheck:clear'
+      parameters:
+      - $ref: '#/components/parameters/agent_id'
+      - $ref: '#/components/parameters/pretty'
+      - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                  - '000'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Syscheck database was cleared on returned agents
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  /syscheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - Syscheck
+      summary: Get last scan datetime
+      description: Return when the last syscheck scan started and ended. If the scan
+        is still in progress the end date will be unknown
+      operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      x-rbac-actions:
+      - $ref: '#/x-rbac-catalog/actions/syscheck:read'
+      parameters:
+      - $ref: '#/components/parameters/pretty'
+      - $ref: '#/components/parameters/wait_for_complete'
+      - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Scan dates
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/AllItemsResponseLastScan'
+              example:
+                data:
+                  affected_items:
+                  - start: '2021-05-28T12:11:33Z'
+                    end: '2021-05-28T12:11:33Z'
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Last syscheck scan of the agent was returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+components:
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human readable description to explain the result of the request
+    AllItemsResponse:
+      type: object
+      required:
+      - total_affected_items
+      - failed_items
+      - total_failed_items
+      properties:
+        total_affected_items:
+          type: integer
+          format: int32
+          description: Number of items that have successfully applied the requested
+            operation
+        failed_items:
+          type: array
+          description: List of items that have failed applying the requested operation
+          items:
+            $ref: '#/components/schemas/SimpleApiError'
+        total_failed_items:
+          type: integer
+          format: int32
+          description: Number of items that have failed applying the requested operation
+    AllItemsResponseAgentIDs:
+      allOf:
+      - type: object
+        required:
+        - affected_items
+        properties:
+          affected_items:
+            type: array
+            description: Items that successfully applied the API call action
+            items:
+              $ref: '#/components/schemas/AgentID'
+      - $ref: '#/components/schemas/AllItemsResponse'
+    AllItemsResponseSyscheckResult:
+      allOf:
+      - $ref: '#/components/schemas/AllItemsResponse'
+      - type: object
+        required:
+        - affected_items
+        properties:
+          affected_items:
+            type: array
+            description: Items that successfully applied the API call action
+            items:
+              $ref: '#/components/schemas/SyscheckDatabase'
+    AllItemsResponseLastScan:
+      allOf:
+      - $ref: '#/components/schemas/AllItemsResponse'
+      - type: object
+        required:
+        - affected_items
+        properties:
+          affected_items:
+            type: array
+            description: Items that successfully applied the API call action
+            items:
+              $ref: '#/components/schemas/LastScan'
+  responses:
+    ResponseError:
+      description: Response to report a bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: Bad Request
+            detail: '''{invalid_param}'' is not a ''{expected_type}''. Failed validating
+              ''format'' in schema[''items'']: {''description'': ''{parameter_name}'',
+              ''format'': ''{expected_format}'', ''minLength'': {expected_length},
+              ''type'': ''{expected_type}'', ''x-scope'': ['''', ''#/components/parameters/{parameter_name}'']}'
+    PermissionDeniedResponse:
+      description: Response to report a permission denied request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            title: Permission Denied
+            detail: 'Permission denied: Resource type: *:*'
+            remediation: Please, make sure you have permissions to execute the current
+              request. For more information on how to set up permissions, please visit
+              https://documentation.wazuh.com/4.9/user-manual/api/rbac/configuration.html
+            error: 4000
+            dapi_errors:
+              unknown-node:
+                error: 'Permission denied: Resource type: *:*'
+    UnauthorizedResponse:
+      description: Response to report an unauthorized request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: Unauthorized
+            detail: No authorization token provided
+    InvalidHTTPMethodResponse:
+      description: Response to report an invalid HTTP method
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: Method Not Allowed
+            detail: Specified method is invalid for this resource
+    TooManyRequestsResponse:
+      description: Maximum number of request per minute reached
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RequestError'
+          example:
+            title: Wazuh Error
+            detail: Maximum number of requests per minute reached
+            remediation: 'This limit can be changed in api.yaml file. More information
+              here: https://documentation.wazuh.com/4.9/user-manual/api/security/configuration.html'
+            code: 6001
+  parameters:
+    agent_id:
+      in: path
+      name: agent_id
+      description: Agent ID. All possible values from 000 onwards
+      required: true
+      schema:
+        $ref: '#/components/schemas/AgentID'
+    full_path_filter:
+      in: query
+      name: file
+      description: Filter by full path
+      schema:
+        type: string
+        format: paths
+    limit:
+      in: query
+      name: limit
+      description: 'Maximum number of elements to return. Although up to 100.000 can
+        be specified, it is recommended not to exceed 500 elements. Responses may
+        be slower the more this number is exceeded. '
+      schema:
+        type: integer
+        format: int32
+        default: 500
+        minimum: 1
+        maximum: 100000
+    agents_list:
+      in: query
+      name: agents_list
+      description: List of agent IDs (separated by comma), all agents selected by
+        default if not specified
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/AgentID'
+    offset:
+      in: query
+      name: offset
+      description: First element to return in the collection
+      schema:
+        type: integer
+        format: int32
+        default: 0
+        minimum: 0
+    pretty:
+      in: query
+      name: pretty
+      description: Show results in human-readable format
+      schema:
+        type: boolean
+        default: false
+    query:
+      in: query
+      name: q
+      description: Query to filter results by. For example q=&quot;status=active&quot;
+      schema:
+        type: string
+    search:
+      in: query
+      name: search
+      description: Look for elements containing the specified string. To obtain a
+        complementary search, use '-' at the beginning
+      schema:
+        type: string
+        format: search
+    select:
+      in: query
+      name: select
+      description: 'Select which fields to return (separated by comma). Use ''.''
+        for nested fields. For example, ''{field1: field2}'' may be selected with
+        ''field1.field2'''
+      schema:
+        type: array
+        items:
+          type: string
+          format: names
+    sort:
+      in: query
+      name: sort
+      description: 'Sort the collection by a field or fields (separated by comma).
+        Use +/- at the beggining to list in ascending or descending order. Use ''.''
+        for nested fields. For example, ''{field1: field2}'' may be selected with
+        ''field1.field2'''
+      schema:
+        type: string
+        format: sort
+    wait_for_complete:
+      in: query
+      name: wait_for_complete
+      description: Disable timeout response
+      schema:
+        type: boolean
+        default: false
+    filetype:
+      in: query
+      name: type
+      description: Filter by file type. Registry_key and registry_value types are
+        only available in Windows agents
+      schema:
+        type: string
+        enum:
+        - file
+        - registry_key
+        - registry_value
+    summary:
+      in: query
+      name: summary
+      description: Return a summary grouping by filename
+      schema:
+        type: boolean
+        default: false
+    md5:
+      in: query
+      name: md5
+      description: Filter files with the specified MD5 checksum
+      schema:
+        type: string
+        format: hash
+    sha1:
+      in: query
+      name: sha1
+      description: Filter files with the specified SHA1 checksum
+      schema:
+        type: string
+        format: hash
+    sha256:
+      in: query
+      name: sha256
+      description: Filter files with the specified SHA256 checksum
+      schema:
+        type: string
+        format: hash
+    hashfilter:
+      in: query
+      name: hash
+      description: Filter files with the specified hash (md5, sha256 or sha1)
+      schema:
+        type: string
+        format: hash
+    distinct:
+      in: query
+      name: distinct
+      description: Look for distinct values.
+      schema:
+        type: boolean
+        default: false
+    syscheck_arch:
+      in: query
+      name: arch
+      description: Filter by architecture
+      schema:
+        type: string
+        enum:
+        - '[x32]'
+        - '[x64]'
+    value.name:
+      in: query
+      name: value.name
+      description: Filter by value name
+      schema:
+        type: string
+        format: alphanumeric
+    value.type:
+      in: query
+      name: value.type
+      description: Filter by value type
+      schema:
+        type: string
+        format: alphanumeric
