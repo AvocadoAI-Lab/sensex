@@ -20,24 +20,24 @@ pub mod lists;
 pub mod logtest;
 pub mod experimental;
 
-// Re-export all handlers
-pub use auth::*;
-pub use manager::*;
-pub use cluster::*;
-pub use agents::*;
-pub use rules::*;
-pub use decoders::*;
-pub use groups::*;
-pub use syscollector::*;
-pub use syscheck::*;
-pub use active_response::*;
-pub use events::*;
-pub use mitre::*;
-pub use ciscat::*;
-pub use rootcheck::*;
-pub use security::*;
-pub use tasks::*;
-pub use sca::*;
-pub use lists::*;
-pub use logtest::*;
-pub use experimental::*;
+// Re-export only the handlers that are actually used in routes
+pub use manager::{
+    get_manager_status,
+    get_manager_info,
+    get_manager_logs,
+    get_manager_stats,
+};
+pub use cluster::{
+    get_cluster_status,
+    get_cluster_local_info,
+};
+pub use rules::get_rules;
+pub use decoders::get_decoders;
+pub use syscollector::{
+    get_syscollector_hardware,
+    get_syscollector_os,
+};
+pub use syscheck::{
+    get_syscheck_agent,
+    get_syscheck_last_scan,
+};

@@ -15,10 +15,6 @@ use crate::handlers::{
     get_syscheck_last_scan,
     get_rules,
     get_decoders,
-    get_groups,
-    get_group_files,
-    get_group_agents,
-    get_tasks_status,
 };
 
 pub fn routes() -> Router {
@@ -40,12 +36,4 @@ pub fn routes() -> Router {
         // Rules and decoders
         .route("/rules", post(get_rules))
         .route("/decoders", post(get_decoders))
-        
-        // Groups
-        .route("/groups", post(get_groups))
-        .route("/groups/files", post(get_group_files))
-        .route("/groups/agents", post(get_group_agents))
-        
-        // Tasks
-        .route("/tasks/status", post(get_tasks_status))
 }
