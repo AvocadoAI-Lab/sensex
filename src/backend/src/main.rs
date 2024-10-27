@@ -1,34 +1,33 @@
-mod client;
-mod handlers;
+use axum::{
+    Router,
+    routing::get,
+    http::StatusCode,
+};
+use std::net::SocketAddr;
+use tower_http::cors::{CorsLayer, Any};
+use routes::create_router;
+
 mod routes;
+mod handlers;
+mod client;
 #[cfg(test)]
 mod tests;
 
-use tower_http::cors::{CorsLayer, Any};
-
 #[tokio::main]
 async fn main() {
-    // Configure CORS
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let app = create_router()
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        );
 
-    // Create router with all routes
-    let app = routes::create_router()
-        .layer(cors);
-
-    // Configure server address
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
     println!("Server running on http://{}", addr);
 
-    // Start server
-    axum::serve(
-        tokio::net::TcpListener::bind(&addr)
-            .await
-            .unwrap(),
-        app,
-    )
-    .await
-    .unwrap();
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
