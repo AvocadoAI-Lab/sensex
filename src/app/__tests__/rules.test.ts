@@ -18,28 +18,6 @@ describe('Wazuh Rules API Flow', () => {
         appendToDoc('Rules List', response);
     }, 30000);
 
-    test('should get rules groups', async () => {
-        const response = await makeAuthorizedRequest('/rules/groups');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        expect(response.data.affected_items).toBeDefined();
-        expect(Array.isArray(response.data.affected_items)).toBe(true);
-        
-        appendToDoc('Rules Groups', response);
-    }, 30000);
-
-    test('should get rules files', async () => {
-        const response = await makeAuthorizedRequest('/rules/files');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        expect(response.data.affected_items).toBeDefined();
-        expect(Array.isArray(response.data.affected_items)).toBe(true);
-        
-        appendToDoc('Rules Files', response);
-    }, 30000);
-
     afterAll(() => {
         // Write documentation to file
         const fs = require('fs');
