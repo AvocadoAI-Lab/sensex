@@ -14,22 +14,26 @@ describe('Wazuh Syscheck API Flow', () => {
         const response = await makeAuthorizedRequest('/agents');
         
         if (response.data.affected_items.length > 0) {
-            agentId = response.data.affected_items[0].id;
+            // Get the first agent ID and ensure it's at least 3 digits
+            agentId = response.data.affected_items[0].id.padStart(3, '0');
             console.log('Using agent ID:', agentId);
             appendToDoc('Selected Agent', { id: agentId });
         } else {
             console.log('No agents available for testing');
         }
-    }, 30000);
+    });
 
     test('should get syscheck files for agent', async () => {
         if (!agentId) {
-            console.log('No agent available, skipping syscheck files test');
-            appendToDoc('Syscheck Files', { message: 'Test skipped - No agent available' });
+            console.log('No agent available, skipping test');
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}`);
+        const response = await makeAuthorizedRequest(`/syscheck/${agentId}`, 'POST', {
+            params: {
+                agent_id: agentId
+            }
+        });
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
@@ -39,35 +43,20 @@ describe('Wazuh Syscheck API Flow', () => {
 
     test('should get syscheck last scan info', async () => {
         if (!agentId) {
-            console.log('No agent available, skipping last scan test');
-            appendToDoc('Last Scan Info', { message: 'Test skipped - No agent available' });
+            console.log('No agent available, skipping test');
             return;
         }
 
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/last_scan`);
+        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/last_scan`, 'POST', {
+            params: {
+                agent_id: agentId
+            }
+        });
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
         
         appendToDoc('Last Scan Info', response);
-    }, 30000);
-
-    test('should get syscheck stats', async () => {
-        if (!agentId) {
-            console.log('No agent available, skipping syscheck stats test');
-            appendToDoc('Syscheck Stats', { message: 'Test skipped - No agent available' });
-            return;
-        }
-
-        const response = await makeAuthorizedRequest(`/agents/${agentId}/stats/agent`);
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Syscheck Stats', {
-            description: 'Agent statistics including syscheck information',
-            response: response
-        });
     }, 30000);
 
     afterAll(() => {

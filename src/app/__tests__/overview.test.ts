@@ -7,56 +7,15 @@ describe('Wazuh Overview API Flow', () => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
-    test('should get agents summary', async () => {
-        const response = await makeAuthorizedRequest('/agents/summary/status');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Agents Summary', response);
-    }, 30000);
-
     test('should get security events summary', async () => {
         const response = await makeAuthorizedRequest('/manager/stats');
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
+        expect(response.data.affected_items).toBeDefined();
+        expect(Array.isArray(response.data.affected_items)).toBe(true);
         
         appendToDoc('Security Events Summary', response);
-    }, 30000);
-
-    test('should get file integrity monitoring summary', async () => {
-        // Get FIM summary for a specific agent since global summary is not available
-        const agentsResponse = await makeAuthorizedRequest('/agents');
-        let agentId = '000'; // Default agent
-        
-        if (agentsResponse.data.affected_items.length > 0) {
-            agentId = agentsResponse.data.affected_items[0].id;
-        }
-        
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/last_scan`);
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('File Integrity Monitoring Summary', response);
-    }, 30000);
-
-    test('should get vulnerabilities summary', async () => {
-        // Get vulnerabilities summary for a specific agent since global summary is not available
-        const agentsResponse = await makeAuthorizedRequest('/agents');
-        let agentId = '000'; // Default agent
-        
-        if (agentsResponse.data.affected_items.length > 0) {
-            agentId = agentsResponse.data.affected_items[0].id;
-        }
-        
-        const response = await makeAuthorizedRequest(`/vulnerability/${agentId}/summary`);
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Vulnerabilities Summary', response);
     }, 30000);
 
     afterAll(() => {

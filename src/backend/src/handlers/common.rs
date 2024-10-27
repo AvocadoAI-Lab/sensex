@@ -6,11 +6,20 @@ use crate::client::WazuhClient;
 pub struct WazuhRequest {
     pub endpoint: String,
     pub token: String,
+    #[serde(default)]
+    pub params: std::collections::HashMap<String, String>,
 }
 
 pub async fn handle_wazuh_request(request: WazuhRequest, url_path: &str, handler: impl FnOnce(String) -> String) -> Json<serde_json::Value> {
     let client = WazuhClient::new();
-    let url = handler(format!("{}/{}", request.endpoint, url_path));
+    
+    // Replace URL parameters with actual values
+    let mut final_path = url_path.to_string();
+    for (key, value) in request.params.iter() {
+        final_path = final_path.replace(&format!("{{{}}}", key), value);
+    }
+    
+    let url = handler(format!("{}/{}", request.endpoint, final_path));
     
     println!("Proxying request to: {}", url);
     

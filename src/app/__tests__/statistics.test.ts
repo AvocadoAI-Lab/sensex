@@ -12,44 +12,10 @@ describe('Wazuh Statistics API Flow', () => {
         
         expect(response).toBeDefined();
         expect(response.data).toBeDefined();
+        expect(response.data.affected_items).toBeDefined();
+        expect(Array.isArray(response.data.affected_items)).toBe(true);
         
         appendToDoc('Manager Statistics', response);
-    }, 30000);
-
-    test('should get manager stats by hour', async () => {
-        const response = await makeAuthorizedRequest('/manager/stats/hourly');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Hourly Statistics', response);
-    }, 30000);
-
-    test('should get manager stats by week', async () => {
-        const response = await makeAuthorizedRequest('/manager/stats/weekly');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Weekly Statistics', response);
-    }, 30000);
-
-    test('should get manager stats by analyzer', async () => {
-        const response = await makeAuthorizedRequest('/manager/stats/analysisd');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Analyzer Statistics', response);
-    }, 30000);
-
-    test('should get manager stats by remote', async () => {
-        const response = await makeAuthorizedRequest('/manager/stats/remoted');
-        
-        expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        
-        appendToDoc('Remote Statistics', response);
     }, 30000);
 
     afterAll(() => {

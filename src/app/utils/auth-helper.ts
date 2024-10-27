@@ -35,10 +35,14 @@ export async function getAuthToken(): Promise<string> {
     return data.data?.token || '';
 }
 
+interface RequestOptions {
+    params?: Record<string, string>;
+}
+
 export async function makeAuthorizedRequest(
     endpoint: string, 
-    method: string = 'GET',  // Keep for backward compatibility
-    body?: any  // Keep for backward compatibility
+    method: string = 'POST',
+    options: RequestOptions = {}
 ): Promise<any> {
     const token = await getAuthToken();
     const url = `${PROXY_URL}${endpoint}`;
@@ -53,7 +57,8 @@ export async function makeAuthorizedRequest(
             },
             body: JSON.stringify({
                 endpoint: WAZUH_URL,
-                token: token
+                token: token,
+                params: options.params || {}
             })
         });
 
