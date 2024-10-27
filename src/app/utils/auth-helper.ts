@@ -1,14 +1,9 @@
 const nodeFetch = require('node-fetch');
-const https = require('https');
 
-const BASE_URL = "https://wazuh.aixsoar.com:55000";
+const PROXY_URL = "http://127.0.0.1:3001";
+const WAZUH_URL = "https://wazuh.aixsoar.com:55000";
 const USERNAME = "wazuh-wui";
 const PASSWORD = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
-
-// Create an HTTPS agent that ignores SSL certificate validation
-const httpsAgent = new https.Agent({
-    rejectUnauthorized: false
-});
 
 interface WazuhAuthResponse {
     data?: {
@@ -18,15 +13,17 @@ interface WazuhAuthResponse {
 }
 
 export async function getAuthToken(): Promise<string> {
-    const authUrl = `${BASE_URL}/security/user/authenticate`;
-    const authString = Buffer.from(`${USERNAME}:${PASSWORD}`).toString('base64');
+    const authUrl = `${PROXY_URL}/security/user/authenticate`;
     
     const response = await nodeFetch(authUrl, {
-        method: 'GET',
+        method: 'POST',
         headers: {
-            'Authorization': `Basic ${authString}`
+            'Content-Type': 'application/json'
         },
-        agent: httpsAgent
+        body: JSON.stringify({
+            endpoint: WAZUH_URL,
+            token: `${USERNAME}:${PASSWORD}`
+        })
     });
 
     if (!response.ok) {
@@ -35,48 +32,48 @@ export async function getAuthToken(): Promise<string> {
     }
 
     const data = await response.json() as WazuhAuthResponse;
-    return data.token || (data.data && data.data.token) || '';
+    return data.data?.token || '';
 }
 
 export async function makeAuthorizedRequest(
     endpoint: string, 
-    method: string = 'GET', 
-    body?: any
+    method: string = 'GET',  // Keep for backward compatibility
+    body?: any  // Keep for backward compatibility
 ): Promise<any> {
     const token = await getAuthToken();
-    const url = `${BASE_URL}${endpoint}`;
+    const url = `${PROXY_URL}${endpoint}`;
     
-    console.log(`Making ${method} request to: ${url}`);
-    
-    const headers: Record<string, string> = {
-        'Authorization': `Bearer ${token}`
-    };
-
-    if (method !== 'GET') {
-        headers['Content-Type'] = 'application/json';
-    }
-    
-    const response = await nodeFetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        agent: httpsAgent
-    });
-
-    const responseText = await response.text();
-    
-    if (!response.ok) {
-        console.error(`Request failed: ${response.status} ${response.statusText}`);
-        console.error('Response:', responseText);
-        throw new Error(`Request failed: ${response.status} ${response.statusText}\nResponse: ${responseText}`);
-    }
+    console.log(`Making request to: ${url}`);
 
     try {
-        return JSON.parse(responseText);
-    } catch (e) {
-        console.error('Failed to parse response as JSON:', responseText);
-        throw e;
+        const response = await nodeFetch(url, {
+            method: 'POST',  // Always use POST for Rust backend
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint: WAZUH_URL,
+                token: token
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Request failed: ${response.status} ${response.statusText}. ${errorText}`);
+        }
+
+        const text = await response.text();
+        if (!text) {
+            return null;  // Handle empty responses
+        }
+
+        const data = JSON.parse(text);
+        console.log(`Response from ${url}:`, data);
+        return data;
+    } catch (error) {
+        console.error(`Error making request to ${url}:`, error);
+        throw error;
     }
 }
 
-export { BASE_URL, httpsAgent };
+export { PROXY_URL, WAZUH_URL };
