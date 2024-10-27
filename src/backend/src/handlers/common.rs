@@ -12,10 +12,18 @@ pub async fn handle_wazuh_request(request: WazuhRequest, url_path: &str, handler
     let client = WazuhClient::new();
     let url = handler(format!("{}/{}", request.endpoint, url_path));
     
+    println!("Proxying request to: {}", url);
+    
     match client.get_cached(&url, Some(&request.token)).await {
-        Ok(data) => Json(data),
-        Err(e) => Json(serde_json::json!({
-            "error": e
-        })),
+        Ok(data) => {
+            println!("Received response from Wazuh for {}", url);
+            Json(data)
+        },
+        Err(e) => {
+            println!("Error from Wazuh for {}: {}", url, e);
+            Json(serde_json::json!({
+                "error": e
+            }))
+        },
     }
 }
