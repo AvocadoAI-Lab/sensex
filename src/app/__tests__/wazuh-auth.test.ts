@@ -6,9 +6,11 @@ const path = require('path');
 const BASE_URL = "http://127.0.0.1:3001";
 const WAZUH_URL = "https://wazuh.aixsoar.com:55000";
 
-interface AuthResponse {
-    token: string | null;
-    error: string | null;
+interface WazuhAuthResponse {
+    data?: {
+        token: string;
+    };
+    error?: string;
 }
 
 describe('Wazuh Authentication Flow Through Rust Proxy', () => {
@@ -21,12 +23,12 @@ describe('Wazuh Authentication Flow Through Rust Proxy', () => {
     };
 
     const getAuthToken = async (): Promise<string> => {
-        const authUrl = `${BASE_URL}/auth`;
+        const authUrl = `${BASE_URL}/security/user/authenticate`;
         
+        // Send username:password in token field
         const payload = {
             endpoint: WAZUH_URL,
-            username: "wazuh-wui",
-            password: "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
+            token: "wazuh-wui:S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
         };
 
         const response = await fetch(authUrl, {
@@ -42,23 +44,22 @@ describe('Wazuh Authentication Flow Through Rust Proxy', () => {
             throw new Error(`Authentication failed: ${response.statusText}. ${errorText}`);
         }
 
-        const data = await response.json() as AuthResponse;
+        const data = await response.json() as WazuhAuthResponse;
         appendToDoc('Auth Token Response Through Proxy', data);
         
-        if (!data.token) {
+        if (!data.data?.token) {
             throw new Error(data.error || 'No token received in response');
         }
         
-        return data.token;
+        return data.data.token;
     };
 
     test('should authenticate successfully through proxy', async () => {
-        const authUrl = `${BASE_URL}/auth`;
+        const authUrl = `${BASE_URL}/security/user/authenticate`;
         
         const payload = {
             endpoint: WAZUH_URL,
-            username: "wazuh-wui",
-            password: "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
+            token: "wazuh-wui:S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
         };
 
         const response = await fetch(authUrl, {
@@ -70,20 +71,19 @@ describe('Wazuh Authentication Flow Through Rust Proxy', () => {
         });
 
         expect(response.status).toBe(200);
-        const data = await response.json() as AuthResponse;
+        const data = await response.json() as WazuhAuthResponse;
         appendToDoc('Successful Authentication Response Through Proxy', data);
-        expect(data.token).toBeDefined();
-        expect(typeof data.token).toBe('string');
-        expect(data.token?.length).toBeGreaterThan(0);
+        expect(data.data?.token).toBeDefined();
+        expect(typeof data.data?.token).toBe('string');
+        expect(data.data?.token.length).toBeGreaterThan(0);
     });
 
     test('should fail with incorrect credentials through proxy', async () => {
-        const authUrl = `${BASE_URL}/auth`;
+        const authUrl = `${BASE_URL}/security/user/authenticate`;
         
         const payload = {
             endpoint: WAZUH_URL,
-            username: "wazuh-wui",
-            password: "wrong_password"
+            token: "wazuh-wui:wrong_password"
         };
 
         const response = await fetch(authUrl, {
@@ -95,7 +95,7 @@ describe('Wazuh Authentication Flow Through Rust Proxy', () => {
         });
 
         expect(response.status).toBe(401);
-        const data = await response.json() as AuthResponse;
+        const data = await response.json() as WazuhAuthResponse;
         appendToDoc('Failed Authentication Response Through Proxy', data);
         expect(data.error).toBeDefined();
     });
@@ -113,7 +113,7 @@ describe('Wazuh Authentication Flow Through Rust Proxy', () => {
             authToken = await getAuthToken();
         }
 
-        const testUrl = `${BASE_URL}/agents`;
+        const testUrl = `${BASE_URL}/security/users/me`;
         const response = await fetch(testUrl, {
             method: 'POST',
             headers: {

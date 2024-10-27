@@ -12,13 +12,17 @@ pub fn routes() -> Router {
         .route("/security/user/authenticate", delete(logout_user))
         .route("/security/user/authenticate/run_as", post(run_as_auth))
         .route("/security/users/me", get(get_user_me))
+        .route("/security/users/me", post(get_user_me))  // Add POST support
         .route("/security/users/me/policies", get(get_user_me_policies))
+        .route("/security/users/me/policies", post(get_user_me_policies))  // Add POST support
         .route("/security/user/revoke", put(revoke_user_tokens))
         .route("/security/users/:user_id/run_as", put(set_user_run_as))
         
         // Actions and Resources
         .route("/security/actions", get(get_security_actions))
+        .route("/security/actions", post(get_security_actions))  // Add POST support
         .route("/security/resources", get(get_security_resources))
+        .route("/security/resources", post(get_security_resources))  // Add POST support
         
         // User Management
         .route("/security/users", get(get_security_users))
@@ -54,6 +58,7 @@ pub fn routes() -> Router {
         
         // Security Configuration
         .route("/security/config", get(get_security_config))
+        .route("/security/config", post(get_security_config))  // Add POST support
         .route("/security/config", put(update_security_config))
         .route("/security/config", delete(delete_security_config))
 }
