@@ -25,7 +25,7 @@ export default function HomePage() {
       const data = await response.json();
       if (data.token) {
         setError(null);
-        fetchAgents(data.token, formData.endpoint);
+        await fetchAgents(data.token, formData.endpoint);
       } else {
         setError(data.error || 'Authentication failed');
       }

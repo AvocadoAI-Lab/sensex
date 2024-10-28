@@ -1,4 +1,5 @@
-const nodeFetch = require('node-fetch');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import nodeFetch from 'node-fetch';
 
 const PROXY_URL = "http://127.0.0.1:3001";
 const WAZUH_URL = "https://wazuh.aixsoar.com:55000";
@@ -42,9 +43,10 @@ interface RequestOptions {
 
 export async function makeAuthorizedRequest(
     endpoint: string, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     method: string = 'POST',
     options: RequestOptions = {}
-): Promise<any> {
+): Promise<null> {
     const token = await getAuthToken();
     const url = `${PROXY_URL}${endpoint}`;
     

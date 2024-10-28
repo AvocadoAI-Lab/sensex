@@ -5,10 +5,6 @@ export type WazuhResponse = {
   error?: string;
 };
 
-export type EndpointResponse = {
-  [key: string]: WazuhResponse | null | AgentsResponse;
-};
-
 export interface AllResponses {
   agents: AgentsResponse | null;
   clusterStatus: WazuhResponse | null;

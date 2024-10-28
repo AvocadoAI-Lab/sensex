@@ -18,10 +18,3 @@ export const getConnectionStatus = (isConnected: boolean, error?: string): Conne
     message: isConnected ? 'Connected' : 'Not connected'
   };
 };
-
-export const getNodeStatus = (isActive: boolean): ConnectionStatus => {
-  return {
-    status: isActive ? 'success' : 'warning',
-    message: isActive ? 'Active' : 'Inactive'
-  };
-};

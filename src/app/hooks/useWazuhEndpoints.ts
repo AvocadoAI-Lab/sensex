@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { WazuhResponse, AllResponses } from '../types/responses';
+import { AllResponses } from '../types/responses';
 
 // Map endpoint keys to their actual API paths
 const endpointPaths: Record<keyof AllResponses, string> = {
