@@ -1,11 +1,6 @@
-use axum::{
-    Router,
-    routing::get,
-    http::StatusCode,
-};
-use std::net::SocketAddr;
-use tower_http::cors::{CorsLayer, Any};
 use routes::create_router;
+use std::net::SocketAddr;
+use tower_http::cors::{Any, CorsLayer};
 
 mod routes;
 mod handlers;

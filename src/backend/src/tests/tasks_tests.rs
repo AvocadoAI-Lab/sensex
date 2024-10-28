@@ -1,5 +1,4 @@
-use super::common::{BASE_URL, get_test_client, validate_response};
-use serde_json::Value;
+use super::common::{get_test_client, validate_response, BASE_URL};
 
 #[tokio::test]
 async fn test_tasks_list() {

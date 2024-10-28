@@ -21,29 +21,24 @@ pub mod logtest;
 pub mod experimental;
 pub mod vulnerability;  // Add vulnerability module
 
+pub use cluster::{
+    get_cluster_local_info,
+    get_cluster_status,
+};
+pub use decoders::get_decoders;
 // Re-export only the handlers that are actually used in routes
 pub use manager::{
-    get_manager_status,
     get_manager_info,
     get_manager_logs,
     get_manager_stats,
-};
-pub use cluster::{
-    get_cluster_status,
-    get_cluster_local_info,
+    get_manager_status,
 };
 pub use rules::get_rules;
-pub use decoders::get_decoders;
-pub use syscollector::{
-    get_syscollector_hardware,
-    get_syscollector_os,
-};
 pub use syscheck::{
     get_syscheck_agent,
     get_syscheck_last_scan,
 };
-pub use vulnerability::{  // Re-export vulnerability handlers
-    get_vulnerability_inventory,
-    get_vulnerability_summary,
-    get_vulnerability_last_scan,
+pub use syscollector::{
+    get_syscollector_hardware,
+    get_syscollector_os,
 };

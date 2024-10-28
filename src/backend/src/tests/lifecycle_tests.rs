@@ -1,8 +1,6 @@
 //! Lifecycle tests for various Wazuh API resources
 //! These tests will cover the complete CRUD operations for different resources
 
-use super::common::{BASE_URL, get_test_client};
-
 /// Test the complete lifecycle of a group
 /// - Create a new group
 /// - Read group information
