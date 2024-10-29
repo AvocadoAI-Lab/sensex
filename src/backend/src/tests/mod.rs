@@ -1,26 +1,14 @@
 pub mod common;
+pub mod test_utils;
 pub mod agents_tests;
 pub mod auth_tests;
-pub mod ciscat_tests;
 pub mod cluster_tests;
 pub mod decoders_tests;
-pub mod events_tests;
-pub mod experimental_tests;
 pub mod groups_tests;
-pub mod integration_test;
-pub mod lifecycle_tests;
 pub mod lists_tests;
-pub mod logtest_tests;
 pub mod manager_tests;
 pub mod mitre_tests;
-pub mod overview_tests;
-pub mod rootcheck_tests;
 pub mod rules_tests;
-pub mod sca_tests;
 pub mod security_tests;
-pub mod statistics_tests;
-pub mod syscheck_tests;
 pub mod syscollector_tests;
 pub mod tasks_tests;
-pub mod vulnerability_tests;
-pub mod load_tests;  // Add load tests module

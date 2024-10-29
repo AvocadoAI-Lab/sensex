@@ -1,12 +1,17 @@
-use serde_json::Value;
 use super::common::{BASE_URL, get_test_client};
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
 use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 
 const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const AGENT_ID: &str = "001";
+const MODULE_NAME: &str = "agents";
 
 #[tokio::test]
-async fn test_agents_flow() {
+async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
+
     // 獲取認證 token
     let (_, token) = get_test_client().await;
     
@@ -16,99 +21,76 @@ async fn test_agents_flow() {
     // 創建 headers
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
 
-    // 1. 獲取所有 agents 列表
-    println!("Step 1: Getting all agents");
-    let response = client
-        .post(&format!("{}/agents", BACKEND_URL))
-        .headers(headers.clone())
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({
-            "endpoint": BASE_URL,
-            "token": token
-        }))
-        .send()
-        .await
-        .expect("Should get agents list");
-    
-    let status = response.status();
-    println!("Agents list status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get agents list successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw agents response: {}", response_text);
-    
-    let agents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Agents List Response: {:#?}", agents_json);
+    // 基本請求結構
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token
+    });
 
-    // 檢查回應結構
-    assert!(agents_json.is_object(), "Response should be a JSON object");
-    assert!(agents_json.get("data").is_some(), "Response should have 'data' field");
-
-    // 獲取第一個 agent ID
-    let first_agent_id = get_first_agent_id(&agents_json);
-
-    // 2. 獲取特定 agent 的詳細資訊
-    if let Some(agent_id) = first_agent_id {
-        println!("\nStep 2: Getting specific agent details for ID: {}", agent_id);
-        let response = client
-            .post(&format!("{}/agents", BACKEND_URL))
-            .headers(headers.clone())
-            .header("Authorization", format!("Bearer {}", token))
-            .json(&serde_json::json!({
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new("/agents", None, Some(base_request.clone())),
+        TestEndpoint::new(
+            &format!("/agents/{}/config/agent/global", AGENT_ID),
+            Some("agent_id, component, configuration"),
+            Some(serde_json::json!({
                 "endpoint": BASE_URL,
                 "token": token,
                 "params": {
-                    "agents_list": agent_id
+                    "agent_id": AGENT_ID,
+                    "component": "agent",
+                    "configuration": "global"
                 }
             }))
-            .send()
-            .await
-            .expect("Should get agent details");
-        
-        let status = response.status();
-        println!("Agent details status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw agent details: {}", response_text);
-        
-        let agent_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-        println!("Agent Details Response: {:#?}", agent_json);
-    } else {
-        println!("No valid agents found in the response");
+        ),
+        TestEndpoint::new(
+            &format!("/agents/{}/group/is_sync", AGENT_ID),
+            Some("agent_id"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "agent_id": AGENT_ID
+                }
+            }))
+        ),
+        TestEndpoint::new(
+            &format!("/agents/{}/daemons/stats", AGENT_ID),
+            Some("agent_id"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "agent_id": AGENT_ID
+                }
+            }))
+        ),
+        TestEndpoint::new(
+            &format!("/agents/{}/stats/analysisd", AGENT_ID),
+            Some("agent_id, component"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "agent_id": AGENT_ID,
+                    "component": "analysisd"
+                }
+            }))
+        ),
+        TestEndpoint::new("/agents/no_group", None, Some(base_request.clone())),
+        TestEndpoint::new("/agents/outdated", None, Some(base_request.clone())),
+        TestEndpoint::new("/agents/stats/distinct", None, Some(base_request.clone())),
+        TestEndpoint::new("/agents/summary/os", None, Some(base_request.clone())),
+        TestEndpoint::new("/agents/summary/status", None, Some(base_request.clone())),
+    ];
+
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        test_endpoint(&client, &headers, endpoint, BACKEND_URL, MODULE_NAME).await?;
     }
-}
 
-// 輔助函數：從回應中獲取第一個 agent 的 ID
-fn get_first_agent_id(json: &Value) -> Option<String> {
-    // 首先檢查並打印完整的 JSON 結構
-    println!("Checking JSON structure for agent ID:");
-    println!("{:#?}", json);
-
-    // 嘗試不同的路徑來找到 agent ID
-    let id = if let Some(items) = json.get("data").and_then(|data| data.get("affected_items")) {
-        if let Some(array) = items.as_array() {
-            if let Some(first) = array.first() {
-                first.get("id").and_then(|id| id.as_str()).map(String::from)
-            } else {
-                println!("No items in the array");
-                None
-            }
-        } else {
-            println!("affected_items is not an array");
-            None
-        }
-    } else {
-        println!("Could not find data.affected_items path");
-        None
-    };
-
-    // 打印找到的 ID
-    if let Some(ref found_id) = id {
-        println!("Found agent ID: {}", found_id);
-    } else {
-        println!("No agent ID found");
-    }
-
-    id
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }
