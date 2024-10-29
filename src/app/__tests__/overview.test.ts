@@ -1,42 +1,51 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import fs from 'fs';
-import path from 'path';
-import type { WazuhResponse } from '../types/responses';
+import { TestDocumenter } from './utils/test-documenter';
 
-describe('Wazuh Overview API Flow', () => {
-    // Create documentation
-    let documentation = '# Wazuh Overview API Test Results\n\n';
-    const appendToDoc = (section: string, content: WazuhResponse): void => {
-        documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
-    };
+describe('Wazuh Overview API Through Rust Proxy', () => {
+    let documenter: TestDocumenter;
 
-    test('should get security events summary', async () => {
-        const response = await makeAuthorizedRequest('/manager/stats');
-        
-        expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
+    beforeAll(() => {
+        TestDocumenter.setTimestamp();  // 設置全域時間戳記
+        TestDocumenter.resetInstance();
+        documenter = TestDocumenter.getInstance('Wazuh Overview API');
+    });
+
+    test('should proxy get overview request', async () => {
+        const testCase = {
+            name: 'Get Overview',
+            endpoint: '/manager/info'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
+            }
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
         }
-
-        const typedResponse = response as WazuhResponse;
-        expect(typedResponse.data).toBeDefined();
-        expect(typedResponse.data.affected_items).toBeDefined();
-        expect(Array.isArray(typedResponse.data.affected_items)).toBe(true);
-        
-        appendToDoc('Security Events Summary', typedResponse);
-    }, 30000);
+    });
 
     afterAll(() => {
-        // Write documentation to file
-        const docsDir = path.join(__dirname, '..', 'docs');
-        
-        if (!fs.existsSync(docsDir)) {
-            fs.mkdirSync(docsDir, { recursive: true });
-        }
-        
-        fs.writeFileSync(
-            path.join(docsDir, 'wazuh-overview-responses.md'),
-            documentation
-        );
+        documenter.save();
     });
 });

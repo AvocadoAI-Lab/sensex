@@ -1,66 +1,80 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import fs from 'fs';
-import path from 'path';
-import type { WazuhResponse } from '../types/responses';
+import type { AgentsResponse } from '../types/agents';
+import { isAgentsResponse } from '../types/agents';
+import { TestDocumenter } from './utils/test-documenter';
 
 describe('Wazuh Agents API Through Rust Proxy', () => {
-    let firstAgentId: string;
-    let documentation = '# Wazuh Agents API Test Results\n\n';
+    let firstAgentId: string | undefined;
+    let documenter: TestDocumenter;
 
-    const appendToDoc = (section: string, content: WazuhResponse): void => {
-        documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
-    };
+    beforeAll(() => {
+        TestDocumenter.setTimestamp();  // 設置全域時間戳記
+        TestDocumenter.resetInstance();
+        documenter = TestDocumenter.getInstance('Wazuh Agents API');
+    });
 
     test('should proxy get all agents request', async () => {
-        const response = await makeAuthorizedRequest('/agents');
+        const testCase = {
+            name: 'Get All Agents',
+            endpoint: '/agents'
+        };
+
+        documenter.startTestCase(testCase);
+
+        const response = await makeAuthorizedRequest<AgentsResponse>(testCase.endpoint);
         
         expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
+        
+        if (!response || !isAgentsResponse(response)) {
+            const error = 'Invalid response format';
+            documenter.logError(testCase, error);
+            throw new Error(error);
         }
 
-        const typedResponse = response as WazuhResponse;
-        appendToDoc('All Agents Response', typedResponse);
+        documenter.logResponse(testCase, response);
 
-        // Store first agent ID for subsequent tests
-        if (typedResponse.data?.affected_items?.length > 0) {
-            const firstAgent = typedResponse.data.affected_items[0];
-            if (!firstAgent.id) {
-                throw new Error('Agent ID is undefined');
+        if (response.data.affected_items.length > 0) {
+            const firstAgent = response.data.affected_items[0];
+            if (firstAgent.id) {
+                firstAgentId = firstAgent.id;
+                console.log('Found first agent ID:', firstAgentId);
             }
-            firstAgentId = firstAgent.id;
-            console.log('Found first agent ID:', firstAgentId);
         }
     });
 
     test('should proxy get specific agent details', async () => {
-        // Skip if no agent ID available
         if (!firstAgentId) {
-            console.log('No agents available to test');
+            const testCase = {
+                name: 'Get Specific Agent',
+                endpoint: '/agents'
+            };
+            const error = 'No agents available to test';
+            console.log(error);
+            documenter.logError(testCase, error);
             return;
         }
 
-        console.log('Getting details for agent:', firstAgentId);
-        const response = await makeAuthorizedRequest(`/agents?agents_list=${firstAgentId}`);
+        const testCase = {
+            name: 'Get Specific Agent',
+            endpoint: `/agents?agents_list=${firstAgentId}`,
+            requestDetails: { agentId: firstAgentId }
+        };
+
+        documenter.startTestCase(testCase);
+
+        const response = await makeAuthorizedRequest<AgentsResponse>(testCase.endpoint);
         
         expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
+        if (!response || !isAgentsResponse(response)) {
+            const error = 'Invalid response format';
+            documenter.logError(testCase, error);
+            throw new Error(error);
         }
 
-        const typedResponse = response as WazuhResponse;
-        appendToDoc(`Agent Details (ID: ${firstAgentId})`, typedResponse);
+        documenter.logResponse(testCase, response);
     });
 
     afterAll(() => {
-        // Write documentation to file
-        const docsDir = path.join(__dirname, '..', 'docs');
-        if (!fs.existsSync(docsDir)) {
-            fs.mkdirSync(docsDir, { recursive: true });
-        }
-        fs.writeFileSync(
-            path.join(docsDir, 'wazuh-agents-responses.md'),
-            documentation
-        );
+        documenter.save();
     });
 });

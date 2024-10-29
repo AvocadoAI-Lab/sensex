@@ -37,16 +37,15 @@ export async function getAuthToken(): Promise<string> {
 }
 
 interface RequestOptions {
-    params?: Record<string, any>;  // Allow any type for param values
-    [key: string]: any;  // Allow any additional properties
+    params?: Record<string, unknown>;
+    [key: string]: unknown;
 }
 
-export async function makeAuthorizedRequest(
+export async function makeAuthorizedRequest<T>(
     endpoint: string, 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     method: string = 'POST',
     options: RequestOptions = {}
-): Promise<null> {
+): Promise<T> {
     const token = await getAuthToken();
     const url = `${PROXY_URL}${endpoint}`;
     
@@ -61,7 +60,7 @@ export async function makeAuthorizedRequest(
             body: JSON.stringify({
                 endpoint: WAZUH_URL,
                 token: token,
-                ...options  // Include all options in the request
+                ...options
             })
         });
 
@@ -72,10 +71,10 @@ export async function makeAuthorizedRequest(
 
         const text = await response.text();
         if (!text) {
-            return null;  // Handle empty responses
+            return null as T;  // Handle empty responses
         }
 
-        const data = JSON.parse(text);
+        const data = JSON.parse(text) as T;
         console.log(`Response from ${url}:`, data);
         return data;
     } catch (error) {
