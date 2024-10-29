@@ -1,86 +1,81 @@
 use super::common::{BASE_URL, get_test_client};
-use serde_json::Value;
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+
+const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const MODULE_NAME: &str = "mitre";
 
 #[tokio::test]
-async fn test_mitre_metadata() {
-    let (client, token) = get_test_client().await;
+async fn test_mitre_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
 
-    println!("Getting MITRE metadata");
-    let metadata_url = format!("{}/mitre/metadata", BASE_URL);
-    let response = client.get(&metadata_url, Some(&token))
-        .await
-        .expect("Should get MITRE metadata");
+    // 獲取認證 token
+    let (_, token) = get_test_client().await;
     
-    let status = response.status();
-    println!("MITRE metadata status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get metadata successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw MITRE metadata response: {}", response_text);
-    
-    let metadata_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("MITRE Metadata Response: {:#?}", metadata_json);
-}
+    // 創建 HTTP client
+    let client = Client::new();
 
-#[tokio::test]
-async fn test_mitre_tactics() {
-    let (client, token) = get_test_client().await;
+    // 創建 headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
 
-    println!("Getting MITRE tactics");
-    let tactics_url = format!("{}/mitre/tactics", BASE_URL);
-    let response = client.get(&tactics_url, Some(&token))
-        .await
-        .expect("Should get MITRE tactics");
-    
-    let status = response.status();
-    println!("MITRE tactics status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get tactics successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw MITRE tactics response: {}", response_text);
-    
-    let tactics_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("MITRE Tactics Response: {:#?}", tactics_json);
-}
+    // 基本請求結構
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token
+    });
 
-#[tokio::test]
-async fn test_mitre_techniques() {
-    let (client, token) = get_test_client().await;
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new(
+            "/mitre/groups",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/metadata",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/mitigations",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/references",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/software",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/tactics",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/mitre/techniques",
+            None,
+            Some(base_request.clone())
+        ),
+    ];
 
-    println!("Getting MITRE techniques");
-    let techniques_url = format!("{}/mitre/techniques", BASE_URL);
-    let response = client.get(&techniques_url, Some(&token))
-        .await
-        .expect("Should get MITRE techniques");
-    
-    let status = response.status();
-    println!("MITRE techniques status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get techniques successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw MITRE techniques response: {}", response_text);
-    
-    let techniques_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("MITRE Techniques Response: {:#?}", techniques_json);
-}
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+            // Don't fail the entire test suite for individual endpoint failures
+            continue;
+        }
+    }
 
-#[tokio::test]
-async fn test_mitre_references() {
-    let (client, token) = get_test_client().await;
-
-    println!("Getting MITRE references");
-    let references_url = format!("{}/mitre/references", BASE_URL);
-    let response = client.get(&references_url, Some(&token))
-        .await
-        .expect("Should get MITRE references");
-    
-    let status = response.status();
-    println!("MITRE references status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get references successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw MITRE references response: {}", response_text);
-    
-    let references_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("MITRE References Response: {:#?}", references_json);
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }

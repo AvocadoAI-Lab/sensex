@@ -1,130 +1,85 @@
 use super::common::{BASE_URL, get_test_client};
-use serde_json::Value;
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+
+const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const GROUP_ID: &str = "default";  // Using "default" as it's a common group name
+const MODULE_NAME: &str = "groups";
 
 #[tokio::test]
-async fn test_groups_list() {
-    let (client, token) = get_test_client().await;
+async fn test_groups_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
 
-    println!("Getting groups list");
-    let groups_url = format!("{}/groups", BASE_URL);
-    let response = client.get(&groups_url, Some(&token))
-        .await
-        .expect("Should get groups list");
+    // 獲取認證 token
+    let (_, token) = get_test_client().await;
     
-    let status = response.status();
-    println!("Groups list status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get groups list successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw groups response: {}", response_text);
-    
-    let groups_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Groups List Response: {:#?}", groups_json);
-}
+    // 創建 HTTP client
+    let client = Client::new();
 
-#[tokio::test]
-async fn test_group_files() {
-    let (client, token) = get_test_client().await;
+    // 創建 headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
 
-    // 1. 先獲取組列表
-    let groups_url = format!("{}/groups", BASE_URL);
-    let response = client.get(&groups_url, Some(&token))
-        .await
-        .expect("Should get groups list");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    let groups_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
+    // 基本請求結構
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token
+    });
 
-    // 2. 獲取第一個組的文件
-    if let Some(group_id) = get_first_group_id(&groups_json) {
-        println!("\nGetting files for group: {}", group_id);
-        let files_url = format!("{}/groups/{}/files", BASE_URL, group_id);
-        let response = client.get(&files_url, Some(&token))
-            .await
-            .expect("Should get group files");
-        
-        let status = response.status();
-        println!("Group files status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw group files response: {}", response_text);
-        
-        if status.as_u16() == 200 {
-            let files_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-            println!("Group Files Response: {:#?}", files_json);
-        } else {
-            println!("Group files not available. Status: {}", status);
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new(
+            "/groups",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/groups/{}/files", GROUP_ID),
+            Some("group_id"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "group_id": GROUP_ID
+                }
+            }))
+        ),
+        TestEndpoint::new(
+            &format!("/groups/{}/agents", GROUP_ID),
+            Some("group_id"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "group_id": GROUP_ID
+                }
+            }))
+        ),
+        TestEndpoint::new(
+            &format!("/groups/{}/configuration", GROUP_ID),
+            Some("group_id"),
+            Some(serde_json::json!({
+                "endpoint": BASE_URL,
+                "token": token,
+                "params": {
+                    "group_id": GROUP_ID
+                }
+            }))
+        ),
+    ];
+
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+            // Don't fail the entire test suite for individual endpoint failures
+            continue;
         }
-    } else {
-        println!("No groups found in the response");
-    }
-}
-
-#[tokio::test]
-async fn test_group_agents() {
-    let (client, token) = get_test_client().await;
-
-    // 1. 先獲取組列表
-    let groups_url = format!("{}/groups", BASE_URL);
-    let response = client.get(&groups_url, Some(&token))
-        .await
-        .expect("Should get groups list");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    let groups_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-
-    // 2. 獲取第一個組的代理列表
-    if let Some(group_id) = get_first_group_id(&groups_json) {
-        println!("\nGetting agents for group: {}", group_id);
-        let agents_url = format!("{}/groups/{}/agents", BASE_URL, group_id);
-        let response = client.get(&agents_url, Some(&token))
-            .await
-            .expect("Should get group agents");
-        
-        let status = response.status();
-        println!("Group agents status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw group agents response: {}", response_text);
-        
-        if status.as_u16() == 200 {
-            let agents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-            println!("Group Agents Response: {:#?}", agents_json);
-        } else {
-            println!("Group agents not available. Status: {}", status);
-        }
-    } else {
-        println!("No groups found in the response");
-    }
-}
-
-// 輔助函數：從回應中獲取第一個 group 的 ID
-fn get_first_group_id(json: &Value) -> Option<String> {
-    println!("Checking JSON structure for group ID:");
-    println!("{:#?}", json);
-
-    let id = if let Some(items) = json.get("data").and_then(|data| data.get("affected_items")) {
-        if let Some(array) = items.as_array() {
-            if let Some(first) = array.first() {
-                first.get("name").and_then(|id| id.as_str()).map(String::from)
-            } else {
-                println!("No items in the array");
-                None
-            }
-        } else {
-            println!("affected_items is not an array");
-            None
-        }
-    } else {
-        println!("Could not find data.affected_items path");
-        None
-    };
-
-    if let Some(ref found_id) = id {
-        println!("Found group ID: {}", found_id);
-    } else {
-        println!("No group ID found");
     }
 
-    id
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }

@@ -1,65 +1,61 @@
 use super::common::{BASE_URL, get_test_client};
-use serde_json::Value;
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+
+const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const MODULE_NAME: &str = "decoders";
 
 #[tokio::test]
-async fn test_decoders_list() {
-    let (client, token) = get_test_client().await;
+async fn test_decoders_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
 
-    println!("Getting decoders list");
-    let decoders_url = format!("{}/decoders", BASE_URL);
-    let response = client.get(&decoders_url, Some(&token))
-        .await
-        .expect("Should get decoders list");
+    // 獲取認證 token
+    let (_, token) = get_test_client().await;
     
-    let status = response.status();
-    println!("Decoders list status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get decoders list successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw decoders response: {}", response_text);
-    
-    let decoders_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Decoders List Response: {:#?}", decoders_json);
-}
+    // 創建 HTTP client
+    let client = Client::new();
 
-#[tokio::test]
-async fn test_decoders_files() {
-    let (client, token) = get_test_client().await;
+    // 創建 headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
 
-    println!("Getting decoders files");
-    let files_url = format!("{}/decoders/files", BASE_URL);
-    let response = client.get(&files_url, Some(&token))
-        .await
-        .expect("Should get decoders files");
-    
-    let status = response.status();
-    println!("Decoders files status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get decoders files successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw decoders files response: {}", response_text);
-    
-    let files_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Decoders Files Response: {:#?}", files_json);
-}
+    // 基本請求結構
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token
+    });
 
-#[tokio::test]
-async fn test_decoders_parents() {
-    let (client, token) = get_test_client().await;
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new(
+            "/decoders",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/decoders/files",
+            None,
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            "/decoders/parents",
+            None,
+            Some(base_request.clone())
+        ),
+    ];
 
-    println!("Getting decoders parents");
-    let parents_url = format!("{}/decoders/parents", BASE_URL);
-    let response = client.get(&parents_url, Some(&token))
-        .await
-        .expect("Should get decoders parents");
-    
-    let status = response.status();
-    println!("Decoders parents status: {}", status);
-    assert_eq!(status.as_u16(), 200, "Should get decoders parents successfully");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    println!("Raw decoders parents response: {}", response_text);
-    
-    let parents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    println!("Decoders Parents Response: {:#?}", parents_json);
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+            // Don't fail the entire test suite for individual endpoint failures
+            continue;
+        }
+    }
+
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }

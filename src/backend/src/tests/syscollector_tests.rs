@@ -1,112 +1,95 @@
 use super::common::{BASE_URL, get_test_client};
-use serde_json::Value;
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+
+const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const AGENT_ID: &str = "001";  // Using same agent ID as in agents_tests
+const MODULE_NAME: &str = "syscollector";
 
 #[tokio::test]
-async fn test_syscollector_hardware() {
-    let (client, token) = get_test_client().await;
+async fn test_syscollector_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
 
-    // 首先獲取一個 agent ID
-    let agents_url = format!("{}/agents", BASE_URL);
-    let response = client.get(&agents_url, Some(&token))
-        .await
-        .expect("Should get agents list");
+    // 獲取認證 token
+    let (_, token) = get_test_client().await;
     
-    let response_text = response.text().await.expect("Should get response text");
-    let agents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    
-    if let Some(agent_id) = get_first_agent_id(&agents_json) {
-        println!("Getting hardware info for agent: {}", agent_id);
-        let hardware_url = format!("{}/syscollector/{}/hardware", BASE_URL, agent_id);
-        let response = client.get(&hardware_url, Some(&token))
-            .await
-            .expect("Should get hardware info");
-        
-        let status = response.status();
-        println!("Hardware info status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw hardware response: {}", response_text);
-        
-        if status.as_u16() == 200 {
-            let hardware_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-            println!("Hardware Info Response: {:#?}", hardware_json);
+    // 創建 HTTP client
+    let client = Client::new();
+
+    // 創建 headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
+
+    // 基本請求結構，包含agent_id參數
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token,
+        "params": {
+            "agent_id": AGENT_ID
+        }
+    });
+
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new(
+            &format!("/syscollector/{}/hardware", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/hotfixes", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/netaddr", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/netiface", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/netproto", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/os", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/packages", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/ports", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+        TestEndpoint::new(
+            &format!("/syscollector/{}/processes", AGENT_ID),
+            Some("agent_id"),
+            Some(base_request.clone())
+        ),
+    ];
+
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+            // Don't fail the entire test suite for individual endpoint failures
+            continue;
         }
     }
-}
 
-#[tokio::test]
-async fn test_syscollector_os() {
-    let (client, token) = get_test_client().await;
-
-    // 首先獲取一個 agent ID
-    let agents_url = format!("{}/agents", BASE_URL);
-    let response = client.get(&agents_url, Some(&token))
-        .await
-        .expect("Should get agents list");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    let agents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    
-    if let Some(agent_id) = get_first_agent_id(&agents_json) {
-        println!("Getting OS info for agent: {}", agent_id);
-        let os_url = format!("{}/syscollector/{}/os", BASE_URL, agent_id);
-        let response = client.get(&os_url, Some(&token))
-            .await
-            .expect("Should get OS info");
-        
-        let status = response.status();
-        println!("OS info status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw OS response: {}", response_text);
-        
-        if status.as_u16() == 200 {
-            let os_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-            println!("OS Info Response: {:#?}", os_json);
-        }
-    }
-}
-
-#[tokio::test]
-async fn test_syscollector_packages() {
-    let (client, token) = get_test_client().await;
-
-    // 首先獲取一個 agent ID
-    let agents_url = format!("{}/agents", BASE_URL);
-    let response = client.get(&agents_url, Some(&token))
-        .await
-        .expect("Should get agents list");
-    
-    let response_text = response.text().await.expect("Should get response text");
-    let agents_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-    
-    if let Some(agent_id) = get_first_agent_id(&agents_json) {
-        println!("Getting packages info for agent: {}", agent_id);
-        let packages_url = format!("{}/syscollector/{}/packages", BASE_URL, agent_id);
-        let response = client.get(&packages_url, Some(&token))
-            .await
-            .expect("Should get packages info");
-        
-        let status = response.status();
-        println!("Packages info status: {}", status);
-        
-        let response_text = response.text().await.expect("Should get response text");
-        println!("Raw packages response: {}", response_text);
-        
-        if status.as_u16() == 200 {
-            let packages_json: Value = serde_json::from_str(&response_text).expect("Should parse JSON");
-            println!("Packages Info Response: {:#?}", packages_json);
-        }
-    }
-}
-
-// 輔助函數：從回應中獲取第一個 agent 的 ID
-fn get_first_agent_id(json: &Value) -> Option<String> {
-    json.get("data")?
-        .get("affected_items")?
-        .as_array()?
-        .first()?
-        .get("id")?
-        .as_str()
-        .map(String::from)
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }

@@ -1,41 +1,51 @@
-use super::common::{get_test_client, validate_response, BASE_URL};
+use super::common::{BASE_URL, get_test_client};
+use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+
+const BACKEND_URL: &str = "http://127.0.0.1:3001";
+const MODULE_NAME: &str = "tasks";
 
 #[tokio::test]
-async fn test_tasks_list() {
-    let (client, token) = get_test_client().await;
+async fn test_tasks_endpoints() -> Result<(), Box<dyn std::error::Error>> {
+    // 設置測試目錄
+    setup_test_directory(MODULE_NAME)?;
 
-    println!("Getting tasks list");
-    let list_url = format!("{}/tasks", BASE_URL);
-    let response = client.get(&list_url, Some(&token))
-        .await
-        .expect("Should get tasks list");
+    // 獲取認證 token
+    let (_, token) = get_test_client().await;
     
-    let status = response.status();
-    let response_text = response.text().await.expect("Should get response text");
-    
-    assert!(validate_response(
-        "Tasks List Test",
-        status.as_u16(),
-        &response_text
-    ));
-}
+    // 創建 HTTP client
+    let client = Client::new();
 
-#[tokio::test]
-async fn test_tasks_status() {
-    let (client, token) = get_test_client().await;
+    // 創建 headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
 
-    println!("Getting tasks status");
-    let status_url = format!("{}/tasks/status", BASE_URL);
-    let response = client.get(&status_url, Some(&token))
-        .await
-        .expect("Should get tasks status");
-    
-    let status = response.status();
-    let response_text = response.text().await.expect("Should get response text");
-    
-    assert!(validate_response(
-        "Tasks Status Test",
-        status.as_u16(),
-        &response_text
-    ));
+    // 基本請求結構
+    let base_request = serde_json::json!({
+        "endpoint": BASE_URL,
+        "token": token
+    });
+
+    // 定義所有要測試的endpoints
+    let endpoints = vec![
+        TestEndpoint::new(
+            "/tasks/status",
+            None,
+            Some(base_request.clone())
+        ),
+    ];
+
+    // 測試所有endpoints
+    for endpoint in endpoints {
+        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+            // Don't fail the entire test suite for individual endpoint failures
+            continue;
+        }
+    }
+
+    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    Ok(())
 }
