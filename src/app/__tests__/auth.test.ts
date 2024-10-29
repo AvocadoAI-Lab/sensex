@@ -1,5 +1,4 @@
 import { describe, expect, test, beforeEach } from '@jest/globals';
-import { NextResponse } from 'next/server';
 
 // Mock fetch
 const mockFetch = jest.fn();

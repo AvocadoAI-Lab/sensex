@@ -1,9 +1,27 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
+import fs from 'fs';
+import path from 'path';
+import type { WazuhResponse, WazuhAffectedItem } from '../types/responses';
+
+interface ClusterNode extends WazuhAffectedItem {
+    name: string;
+    type: string;
+    version: string;
+    ip: string;
+    [key: string]: unknown;
+}
+
+interface ClusterStatusResponse extends WazuhResponse {
+    data: {
+        enabled: 'yes' | 'no';
+        affected_items: ClusterNode[];
+    };
+}
 
 describe('Wazuh Cluster API Flow', () => {
     // Create documentation
     let documentation = '# Wazuh Cluster API Test Results\n\n';
-    const appendToDoc = (section: string, content: any) => {
+    const appendToDoc = (section: string, content: WazuhResponse | { message: string }): void => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
@@ -13,12 +31,17 @@ describe('Wazuh Cluster API Flow', () => {
         const response = await makeAuthorizedRequest('/cluster/status');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as ClusterStatusResponse;
+        expect(typedResponse.data).toBeDefined();
         
-        appendToDoc('Cluster Status', response);
+        appendToDoc('Cluster Status', typedResponse);
         
         // Store cluster status for subsequent tests
-        isClusterEnabled = response.data.enabled === 'yes';
+        isClusterEnabled = typedResponse.data.enabled === 'yes';
         console.log('Cluster enabled:', isClusterEnabled);
     }, 30000);
 
@@ -32,9 +55,14 @@ describe('Wazuh Cluster API Flow', () => {
         const response = await makeAuthorizedRequest('/cluster/nodes');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        expect(typedResponse.data).toBeDefined();
         
-        appendToDoc('Cluster Nodes', response);
+        appendToDoc('Cluster Nodes', typedResponse);
     }, 30000);
 
     test('should get cluster health if enabled', async () => {
@@ -47,15 +75,18 @@ describe('Wazuh Cluster API Flow', () => {
         const response = await makeAuthorizedRequest('/cluster/healthcheck');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        expect(typedResponse.data).toBeDefined();
         
-        appendToDoc('Cluster Health', response);
+        appendToDoc('Cluster Health', typedResponse);
     }, 30000);
 
     afterAll(() => {
         // Write documentation to file
-        const fs = require('fs');
-        const path = require('path');
         const docsDir = path.join(__dirname, '..', 'docs');
         
         if (!fs.existsSync(docsDir)) {

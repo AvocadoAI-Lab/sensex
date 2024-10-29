@@ -1,9 +1,12 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
+import fs from 'fs';
+import path from 'path';
+import type { WazuhResponse } from '../types/responses';
 
 describe('Wazuh Events API Flow', () => {
     // Create documentation
     let documentation = '# Wazuh Events API Test Results\n\n';
-    const appendToDoc = (section: string, content: any) => {
+    const appendToDoc = (section: string, content: WazuhResponse): void => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
@@ -11,28 +14,36 @@ describe('Wazuh Events API Flow', () => {
         const response = await makeAuthorizedRequest('/manager/stats');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        expect(response.data.affected_items).toBeDefined();
-        expect(Array.isArray(response.data.affected_items)).toBe(true);
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        expect(typedResponse.data).toBeDefined();
+        expect(typedResponse.data.affected_items).toBeDefined();
+        expect(Array.isArray(typedResponse.data.affected_items)).toBe(true);
         
-        appendToDoc('Events Summary', response);
+        appendToDoc('Events Summary', typedResponse);
     }, 30000);
 
     test('should get events alerts', async () => {
         const response = await makeAuthorizedRequest('/manager/logs');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        expect(response.data.affected_items).toBeDefined();
-        expect(Array.isArray(response.data.affected_items)).toBe(true);
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        expect(typedResponse.data).toBeDefined();
+        expect(typedResponse.data.affected_items).toBeDefined();
+        expect(Array.isArray(typedResponse.data.affected_items)).toBe(true);
         
-        appendToDoc('Events Alerts', response);
+        appendToDoc('Events Alerts', typedResponse);
     }, 30000);
 
     afterAll(() => {
         // Write documentation to file
-        const fs = require('fs');
-        const path = require('path');
         const docsDir = path.join(__dirname, '..', 'docs');
         
         if (!fs.existsSync(docsDir)) {

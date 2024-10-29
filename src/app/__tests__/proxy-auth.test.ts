@@ -1,4 +1,4 @@
-const nodeFetch = require('node-fetch');
+import nodeFetch from "node-fetch";
 
 const PROXY_URL = "http://127.0.0.1:3001";
 const WAZUH_URL = "https://wazuh.aixsoar.com:55000";

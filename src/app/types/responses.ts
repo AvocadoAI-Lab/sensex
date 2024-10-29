@@ -1,9 +1,21 @@
 import { AgentsResponse } from './agents';
 
-export type WazuhResponse = {
-  data?: unknown;
+export interface WazuhAffectedItem {
+  id?: string;
+  [key: string]: unknown;
+}
+
+export interface WazuhResponseData {
+  affected_items: WazuhAffectedItem[];
+  total_affected_items?: number;
+  total_failed_items?: number;
+  failed_items?: WazuhAffectedItem[];
+}
+
+export interface WazuhResponse {
+  data: WazuhResponseData;
   error?: string;
-};
+}
 
 export interface AllResponses {
   agents: AgentsResponse | null;

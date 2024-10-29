@@ -1,9 +1,12 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
+import fs from 'fs';
+import path from 'path';
+import type { WazuhResponse } from '../types/responses';
 
 describe('Wazuh Rules API Flow', () => {
     // Create documentation
     let documentation = '# Wazuh Rules API Test Results\n\n';
-    const appendToDoc = (section: string, content: any) => {
+    const appendToDoc = (section: string, content: WazuhResponse): void => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
@@ -11,17 +14,20 @@ describe('Wazuh Rules API Flow', () => {
         const response = await makeAuthorizedRequest('/rules');
         
         expect(response).toBeDefined();
-        expect(response.data).toBeDefined();
-        expect(response.data.affected_items).toBeDefined();
-        expect(Array.isArray(response.data.affected_items)).toBe(true);
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        expect(typedResponse.data).toBeDefined();
+        expect(typedResponse.data.affected_items).toBeDefined();
+        expect(Array.isArray(typedResponse.data.affected_items)).toBe(true);
         
-        appendToDoc('Rules List', response);
+        appendToDoc('Rules List', typedResponse);
     }, 30000);
 
     afterAll(() => {
         // Write documentation to file
-        const fs = require('fs');
-        const path = require('path');
         const docsDir = path.join(__dirname, '..', 'docs');
         
         if (!fs.existsSync(docsDir)) {

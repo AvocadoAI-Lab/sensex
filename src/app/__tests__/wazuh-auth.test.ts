@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
-const fs = require('fs');
-const path = require('path');
+import fs from "fs";
 
+import path from "path";
 // Point to our Rust proxy
 const BASE_URL = "http://127.0.0.1:3001";
 const WAZUH_URL = "https://wazuh.aixsoar.com:55000";

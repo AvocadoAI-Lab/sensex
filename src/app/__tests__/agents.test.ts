@@ -1,24 +1,34 @@
-import { describe, expect, test, beforeAll } from '@jest/globals';
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import type { WazuhResponse } from '../types/responses';
 
 describe('Wazuh Agents API Through Rust Proxy', () => {
     let firstAgentId: string;
     let documentation = '# Wazuh Agents API Test Results\n\n';
 
-    const appendToDoc = (section: string, content: any) => {
+    const appendToDoc = (section: string, content: WazuhResponse): void => {
         documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
     };
 
     test('should proxy get all agents request', async () => {
         const response = await makeAuthorizedRequest('/agents');
-        appendToDoc('All Agents Response', response);
+        
         expect(response).toBeDefined();
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        appendToDoc('All Agents Response', typedResponse);
 
         // Store first agent ID for subsequent tests
-        if (response.data?.affected_items?.length > 0) {
-            firstAgentId = response.data.affected_items[0].id;
+        if (typedResponse.data?.affected_items?.length > 0) {
+            const firstAgent = typedResponse.data.affected_items[0];
+            if (!firstAgent.id) {
+                throw new Error('Agent ID is undefined');
+            }
+            firstAgentId = firstAgent.id;
             console.log('Found first agent ID:', firstAgentId);
         }
     });
@@ -32,8 +42,14 @@ describe('Wazuh Agents API Through Rust Proxy', () => {
 
         console.log('Getting details for agent:', firstAgentId);
         const response = await makeAuthorizedRequest(`/agents?agents_list=${firstAgentId}`);
-        appendToDoc(`Agent Details (ID: ${firstAgentId})`, response);
+        
         expect(response).toBeDefined();
+        if (!response) {
+            throw new Error('Response is null');
+        }
+
+        const typedResponse = response as WazuhResponse;
+        appendToDoc(`Agent Details (ID: ${firstAgentId})`, typedResponse);
     });
 
     afterAll(() => {
