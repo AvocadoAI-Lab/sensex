@@ -1,7 +1,11 @@
-use axum::Router;
+use axum::{
+    Router,
+    routing::post,
+};
+use crate::handlers::tasks::*;
 
 pub fn routes() -> Router {
     Router::new()
-    // All endpoints failing with 405/404
-    // Routes removed until proper endpoint support is implemented
+        // Tasks information endpoint
+        .route("/tasks/status", post(get_tasks_status))
 }

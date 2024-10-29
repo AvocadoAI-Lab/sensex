@@ -1,12 +1,12 @@
 use axum::{
     Router,
-    routing::{put, delete},
+    routing::post,
 };
 use crate::handlers::lists::*;
 
 pub fn routes() -> Router {
     Router::new()
-        // Keep only PUT/DELETE operations
-        .route("/lists/files/:filename", put(update_list_file))
-        .route("/lists/files/:filename", delete(delete_list_file))
+        // CDB lists information endpoints
+        .route("/lists", post(get_lists))
+        .route("/lists/files", post(get_lists_files))
 }

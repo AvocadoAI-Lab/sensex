@@ -2,50 +2,32 @@ use axum::Router;
 use axum::routing::get;
 
 mod agents;
-mod system;
-mod security;
-mod groups;
-mod ciscat;
+mod auth;
 mod cluster;
 mod decoders;
+mod groups;
 mod lists;
-mod logtest;
 mod manager;
 mod mitre;
-mod rootcheck;
 mod rules;
-mod sca;
-mod syscheck;
+mod security;
 mod syscollector;
 mod tasks;
-mod events;
-mod experimental;
-mod auth;
-mod vulnerability;  // Add vulnerability module
 
 pub fn create_router() -> Router {
     Router::new()
         .merge(agents::routes())
-        .merge(system::routes())
-        .merge(security::routes())
-        .merge(groups::routes())
-        .merge(ciscat::routes())
+        .merge(auth::routes())
         .merge(cluster::routes())
         .merge(decoders::routes())
+        .merge(groups::routes())
         .merge(lists::routes())
-        .merge(logtest::routes())
         .merge(manager::routes())
         .merge(mitre::routes())
-        .merge(rootcheck::routes())
         .merge(rules::routes())
-        .merge(sca::routes())
-        .merge(syscheck::routes())
+        .merge(security::routes())
         .merge(syscollector::routes())
         .merge(tasks::routes())
-        .merge(events::routes())
-        .merge(experimental::routes())
-        .merge(auth::routes())
-        .merge(vulnerability::routes())  // Merge vulnerability routes
         .route("/health", get(health_check))
 }
 

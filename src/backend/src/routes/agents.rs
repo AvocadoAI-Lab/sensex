@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    routing::{post, put, delete},
+    routing::post,
 };
 use crate::handlers::agents::*;
 
@@ -8,28 +8,19 @@ pub fn routes() -> Router {
     Router::new()
         // Base agents endpoints
         .route("/agents", post(get_agents))
-        .route("/agents/insert", post(insert_agent))
-        .route("/agents/insert/quick", post(insert_agent_quick))
-        .route("/agents", delete(delete_agents))
         
-        // Agent operations
-        .route("/agents/restart", put(restart_agent))
-        .route("/agents/upgrade", put(upgrade_agents))
-        .route("/agents/upgrade_custom", put(upgrade_agents_custom))
+        // Agent configuration and stats
+        .route("/agents/:agent_id/config/:component/:configuration", post(get_agent_config_by_id))
+        .route("/agents/:agent_id/group/is_sync", post(get_agent_group_sync_status))
+        .route("/agents/:agent_id/daemons/stats", post(get_daemon_stats))
+        .route("/agents/:agent_id/stats/:component", post(get_agent_stats_component))
         
-        // Group operations
-        .route("/agents/group", put(put_agents_group))
-        .route("/agents/group", delete(delete_agents_group))
-        .route("/agents/group/:group_id/restart", put(restart_agents_by_group))
-
-        // Node operations
-        .route("/agents/node/:node_id/restart", put(restart_agents_by_node))
-
-        // Individual agent operations
-        .route("/agents/:agent_id", post(get_agent_by_id))
-        .route("/agents/:agent_id", delete(delete_agent_by_id))
-        .route("/agents/:agent_id/restart", put(restart_agent_by_id))
-        .route("/agents/:agent_id/group", delete(delete_agent_group))
-        .route("/agents/:agent_id/group/:group_id", delete(delete_agent_from_group))
-        .route("/agents/:agent_id/group/:group_id", put(put_agent_group))
+        // Group related endpoints
+        .route("/agents/no_group", post(get_agents_without_group))
+        
+        // Status and summary endpoints
+        .route("/agents/outdated", post(get_outdated_agents))
+        .route("/agents/stats/distinct", post(get_distinct_agents_stats))
+        .route("/agents/summary/os", post(get_agents_os_summary))
+        .route("/agents/summary/status", post(get_agents_status_summary))
 }

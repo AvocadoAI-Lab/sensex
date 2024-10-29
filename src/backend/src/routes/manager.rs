@@ -1,17 +1,25 @@
 use axum::{
     Router,
-    routing::{get, put},
+    routing::post,
 };
 use crate::handlers::manager::*;
 
 pub fn routes() -> Router {
     Router::new()
-        // Keep only working endpoints
-        .route("/manager/info", get(get_manager_info))
-        .route("/manager/stats", get(get_manager_stats))
-        .route("/manager/logs", get(get_manager_logs))
+        // Base API info
+        .route("/", post(get_api_info))
         
-        // Keep configuration update operation
-        .route("/manager/configuration", put(update_manager_config))
-        .route("/manager/restart", put(restart_manager))
+        // Manager status and info
+        .route("/manager/status", post(get_manager_status))
+        .route("/manager/info", post(get_manager_info))
+        .route("/manager/configuration", post(get_manager_configuration))
+        
+        // Statistics endpoints
+        .route("/manager/stats", post(get_manager_stats))
+        .route("/manager/stats/hourly", post(get_manager_hourly_stats))
+        .route("/manager/stats/weekly", post(get_manager_weekly_stats))
+        
+        // Logs endpoints
+        .route("/manager/logs", post(get_manager_logs))
+        .route("/manager/logs/summary", post(get_manager_logs_summary))
 }

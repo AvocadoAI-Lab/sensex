@@ -1,17 +1,13 @@
 use axum::{
     Router,
-    routing::{get, put, delete},
+    routing::post,
 };
 use crate::handlers::decoders::*;
 
 pub fn routes() -> Router {
     Router::new()
-        // Base decoders endpoint
-        .route("/decoders", get(get_decoders))
-        
-        // Decoder files operations
-        .route("/decoders/files", get(get_decoder_files))
-        .route("/decoders/files/:filename", get(get_decoder_file_content))
-        .route("/decoders/files/:filename", put(update_decoder_file))
-        .route("/decoders/files/:filename", delete(delete_decoder_file))
+        // Decoders information endpoints
+        .route("/decoders", post(get_decoders))
+        .route("/decoders/files", post(get_decoder_files))
+        .route("/decoders/parents", post(get_decoder_parents))
 }
