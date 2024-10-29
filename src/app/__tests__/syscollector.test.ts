@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,15 +7,13 @@ describe('Wazuh Syscollector API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Syscollector API');
+        documenter = new TestDocumenter('Wazuh Syscollector API');
     });
 
-    test.skip('should proxy get syscollector hardware request', async () => {
+    test('should proxy get syscollector hardware request', async () => {
         const testCase = {
             name: 'Get Syscollector Hardware',
-            endpoint: '/syscollector/000/hardware'
+            endpoint: '/syscollector/hardware'
         };
 
         documenter.startTestCase(testCase);
@@ -47,10 +45,10 @@ describe('Wazuh Syscollector API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get syscollector os request', async () => {
+    test('should proxy get syscollector os request', async () => {
         const testCase = {
             name: 'Get Syscollector OS',
-            endpoint: '/syscollector/000/os'
+            endpoint: '/syscollector/os'
         };
 
         documenter.startTestCase(testCase);

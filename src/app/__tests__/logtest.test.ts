@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Logtest API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Logtest API');
+        documenter = new TestDocumenter('Wazuh Logtest API');
     });
 
-    test.skip('should proxy logtest request', async () => {
+    test('should proxy logtest request', async () => {
         const testCase = {
             name: 'Run Logtest',
             endpoint: '/logtest',
@@ -26,9 +24,11 @@ describe('Wazuh Logtest API Through Rust Proxy', () => {
         documenter.startTestCase(testCase);
 
         try {
-            const response = await makeAuthorizedRequest(testCase.endpoint, 'POST', {
-                params: testCase.requestDetails
-            });
+            const response = await makeAuthorizedRequest(
+                testCase.endpoint,
+                'PUT',
+                { body: testCase.requestDetails }
+            );
             
             expect(response).toBeDefined();
             if (!response) {

@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Events API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Events API');
+        documenter = new TestDocumenter('Wazuh Events API');
     });
 
-    test.skip('should proxy get events request', async () => {
+    test('should proxy get events request', async () => {
         const testCase = {
             name: 'Get Events',
             endpoint: '/events'

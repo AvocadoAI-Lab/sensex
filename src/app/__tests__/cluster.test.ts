@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Cluster API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Cluster API');
+        documenter = new TestDocumenter('Wazuh Cluster API');
     });
 
-    test.skip('should proxy get cluster status request', async () => {
+    test('should proxy get cluster status request', async () => {
         const testCase = {
             name: 'Get Cluster Status',
             endpoint: '/cluster/status'
@@ -47,7 +45,7 @@ describe('Wazuh Cluster API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get cluster local info request', async () => {
+    test('should proxy get cluster local info request', async () => {
         const testCase = {
             name: 'Get Cluster Local Info',
             endpoint: '/cluster/local/info'

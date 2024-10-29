@@ -25,44 +25,48 @@ export class TestDocumenter {
     private testName: string;
     private docsDir: string;
     private testDir: string;
-    private static instance: TestDocumenter | null = null;
-    private static timestamp: string | null = null;
+    private timestamp: string;
 
-    private constructor(testName: string) {
+    constructor(testName: string) {
         this.documentation = `# ${testName} Test Results\n\n`;
         this.yamlStructure = '';
         this.logs = [];
         this.testName = testName;
-        this.docsDir = path.join(__dirname, '..', 'docs');
         
-        const baseFilename = this.testName.toLowerCase().replace(/\s+/g, '-');
-        this.testDir = path.join(this.docsDir, TestDocumenter.timestamp!, baseFilename);
-    }
-
-    public static setTimestamp(): void {
-        // 只取到分鐘級別的時間戳記
+        // 設置時間戳記
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
         const hour = String(now.getHours()).padStart(2, '0');
         const minute = String(now.getMinutes()).padStart(2, '0');
+        this.timestamp = `${year}-${month}-${day}T${hour}-${minute}`;
         
-        TestDocumenter.timestamp = `${year}-${month}-${day}T${hour}-${minute}`;
-    }
-
-    public static getInstance(testName: string): TestDocumenter {
-        if (!TestDocumenter.timestamp) {
-            throw new Error('Timestamp not set. Call TestDocumenter.setTimestamp() before creating instances.');
+        // 使用絕對路徑
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        this.docsDir = path.join(projectRoot, 'docs');
+        
+        // 確保docs目錄存在
+        if (!fs.existsSync(this.docsDir)) {
+            fs.mkdirSync(this.docsDir, { recursive: true });
         }
-        if (!TestDocumenter.instance) {
-            TestDocumenter.instance = new TestDocumenter(testName);
+        
+        // 確保時間戳記目錄存在
+        const timestampDir = path.join(this.docsDir, this.timestamp);
+        if (!fs.existsSync(timestampDir)) {
+            fs.mkdirSync(timestampDir, { recursive: true });
         }
-        return TestDocumenter.instance;
-    }
+        
+        const baseFilename = this.testName.toLowerCase().replace(/\s+/g, '-');
+        this.testDir = path.join(timestampDir, baseFilename);
+        
+        // 確保測試目錄存在
+        if (!fs.existsSync(this.testDir)) {
+            fs.mkdirSync(this.testDir, { recursive: true });
+        }
 
-    public static resetInstance(): void {
-        TestDocumenter.instance = null;
+        console.log('Docs directory:', this.docsDir);
+        console.log('Test directory:', this.testDir);
     }
 
     private analyzeStructure(obj: unknown, prefix: string = ''): string {
@@ -157,28 +161,34 @@ export class TestDocumenter {
     }
 
     public save(): void {
-        if (!fs.existsSync(this.testDir)) {
-            fs.mkdirSync(this.testDir, { recursive: true });
+        try {
+            // 確保目錄存在
+            if (!fs.existsSync(this.testDir)) {
+                fs.mkdirSync(this.testDir, { recursive: true });
+            }
+
+            // 寫入檔案
+            const responsesPath = path.join(this.testDir, 'responses.md');
+            fs.writeFileSync(responsesPath, this.documentation);
+            console.log('Saved responses to:', responsesPath);
+
+            const structurePath = path.join(this.testDir, 'structure.yaml');
+            fs.writeFileSync(structurePath, this.yamlStructure);
+            console.log('Saved structure to:', structurePath);
+
+            const logContent = this.logs
+                .map(log => JSON.stringify(log, null, 2))
+                .join('\n\n');
+            const logPath = path.join(this.testDir, 'test-log.json');
+            fs.writeFileSync(logPath, `[\n${logContent}\n]`);
+            console.log('Saved logs to:', logPath);
+
+            console.log('All documentation saved successfully');
+        } catch (error) {
+            console.error('Error saving documentation:', error);
+            console.error('Test directory:', this.testDir);
+            console.error('Current working directory:', process.cwd());
+            throw error;  // 重新拋出錯誤以便測試可以捕捉到
         }
-
-        fs.writeFileSync(
-            path.join(this.testDir, 'responses.md'),
-            this.documentation
-        );
-
-        fs.writeFileSync(
-            path.join(this.testDir, 'structure.yaml'),
-            this.yamlStructure
-        );
-
-        const logContent = this.logs
-            .map(log => JSON.stringify(log, null, 2))
-            .join('\n\n');
-        fs.writeFileSync(
-            path.join(this.testDir, 'test-log.json'),
-            `[\n${logContent}\n]`
-        );
-
-        console.log(`Test documentation saved to: ${this.testDir}`);
     }
 }

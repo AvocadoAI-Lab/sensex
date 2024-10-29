@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Decoders API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Decoders API');
+        documenter = new TestDocumenter('Wazuh Decoders API');
     });
 
-    test.skip('should proxy get all decoders request', async () => {
+    test('should proxy get all decoders request', async () => {
         const testCase = {
             name: 'Get All Decoders',
             endpoint: '/decoders'
@@ -47,7 +45,7 @@ describe('Wazuh Decoders API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get decoders files request', async () => {
+    test('should proxy get decoders files request', async () => {
         const testCase = {
             name: 'Get Decoders Files',
             endpoint: '/decoders/files'

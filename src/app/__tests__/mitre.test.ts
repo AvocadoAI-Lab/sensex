@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh MITRE API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh MITRE API');
+        documenter = new TestDocumenter('Wazuh MITRE API');
     });
 
-    test.skip('should proxy get mitre metadata request', async () => {
+    test('should proxy get mitre metadata request', async () => {
         const testCase = {
             name: 'Get MITRE Metadata',
             endpoint: '/mitre/metadata'
@@ -47,10 +45,10 @@ describe('Wazuh MITRE API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get mitre techniques request', async () => {
+    test('should proxy get mitre tactics request', async () => {
         const testCase = {
-            name: 'Get MITRE Techniques',
-            endpoint: '/mitre/techniques'
+            name: 'Get MITRE Tactics',
+            endpoint: '/mitre/tactics'
         };
 
         documenter.startTestCase(testCase);
@@ -82,10 +80,10 @@ describe('Wazuh MITRE API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get mitre tactics request', async () => {
+    test('should proxy get mitre techniques request', async () => {
         const testCase = {
-            name: 'Get MITRE Tactics',
-            endpoint: '/mitre/tactics'
+            name: 'Get MITRE Techniques',
+            endpoint: '/mitre/techniques'
         };
 
         documenter.startTestCase(testCase);

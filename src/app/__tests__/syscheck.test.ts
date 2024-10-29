@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,15 +7,13 @@ describe('Wazuh Syscheck API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Syscheck API');
+        documenter = new TestDocumenter('Wazuh Syscheck API');
     });
 
-    test.skip('should proxy get syscheck files request', async () => {
+    test('should proxy get syscheck files request', async () => {
         const testCase = {
             name: 'Get Syscheck Files',
-            endpoint: '/syscheck/000/files'
+            endpoint: '/syscheck/files'
         };
 
         documenter.startTestCase(testCase);
@@ -47,10 +45,10 @@ describe('Wazuh Syscheck API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get syscheck last scan request', async () => {
+    test('should proxy get syscheck last scan request', async () => {
         const testCase = {
             name: 'Get Syscheck Last Scan',
-            endpoint: '/syscheck/000/last_scan'
+            endpoint: '/syscheck/last_scan'
         };
 
         documenter.startTestCase(testCase);

@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Manager API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Manager API');
+        documenter = new TestDocumenter('Wazuh Manager API');
     });
 
-    test.skip('should proxy get manager info request', async () => {
+    test('should proxy get manager info request', async () => {
         const testCase = {
             name: 'Get Manager Info',
             endpoint: '/manager/info'
@@ -47,7 +45,7 @@ describe('Wazuh Manager API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get manager status request', async () => {
+    test('should proxy get manager status request', async () => {
         const testCase = {
             name: 'Get Manager Status',
             endpoint: '/manager/status'
@@ -82,7 +80,7 @@ describe('Wazuh Manager API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get manager logs request', async () => {
+    test('should proxy get manager logs request', async () => {
         const testCase = {
             name: 'Get Manager Logs',
             endpoint: '/manager/logs'

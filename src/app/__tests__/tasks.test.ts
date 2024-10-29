@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,12 +7,10 @@ describe('Wazuh Tasks API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh Tasks API');
+        documenter = new TestDocumenter('Wazuh Tasks API');
     });
 
-    test.skip('should proxy get all tasks request', async () => {
+    test('should proxy get all tasks request', async () => {
         const testCase = {
             name: 'Get All Tasks',
             endpoint: '/tasks'
@@ -47,7 +45,7 @@ describe('Wazuh Tasks API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get task status request', async () => {
+    test('should proxy get task status request', async () => {
         const testCase = {
             name: 'Get Task Status',
             endpoint: '/tasks/status'
@@ -82,7 +80,7 @@ describe('Wazuh Tasks API Through Rust Proxy', () => {
         }
     });
 
-    test.skip('should proxy get task result request', async () => {
+    test('should proxy get task result request', async () => {
         const testCase = {
             name: 'Get Task Result',
             endpoint: '/tasks/result'

@@ -1,5 +1,5 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import {TestDocumenter} from "@/app/utils/test-documenter";
+import { TestDocumenter } from '../utils/test-documenter';
 
 jest.setTimeout(30000); // 增加超時時間到30秒
 
@@ -7,15 +7,13 @@ describe('Wazuh CIS-CAT API Through Rust Proxy', () => {
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();
-        TestDocumenter.resetInstance();
-        documenter = TestDocumenter.getInstance('Wazuh CIS-CAT API');
+        documenter = new TestDocumenter('Wazuh CIS-CAT API');
     });
 
-    test.skip('should proxy get ciscat results request', async () => {
+    test('should proxy ciscat request', async () => {
         const testCase = {
-            name: 'Get CIS-CAT Results',
-            endpoint: '/ciscat/000/results'
+            name: 'Get CIS-CAT Data',
+            endpoint: '/ciscat'
         };
 
         documenter.startTestCase(testCase);
