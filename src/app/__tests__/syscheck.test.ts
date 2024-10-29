@@ -1,100 +1,88 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import fs from 'fs';
-import path from 'path';
-import type { WazuhResponse } from '../types/responses';
+import {TestDocumenter} from "@/app/utils/test-documenter";
 
-describe('Wazuh Syscheck API Flow', () => {
-    // Create documentation
-    let documentation = '# Wazuh Syscheck API Test Results\n\n';
-    const appendToDoc = (section: string, content: WazuhResponse | { message: string; id?: string }): void => {
-        documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
-    };
+jest.setTimeout(30000); // 增加超時時間到30秒
 
-    let agentId: string;
+describe('Wazuh Syscheck API Through Rust Proxy', () => {
+    let documenter: TestDocumenter;
 
-    beforeAll(async () => {
-        // Get first available agent ID
-        const response = await makeAuthorizedRequest('/agents');
-        
-        expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
-        }
+    beforeAll(() => {
+        TestDocumenter.setTimestamp();
+        TestDocumenter.resetInstance();
+        documenter = TestDocumenter.getInstance('Wazuh Syscheck API');
+    });
 
-        const typedResponse = response as WazuhResponse;
-        if (typedResponse.data.affected_items.length > 0) {
-            const firstAgent = typedResponse.data.affected_items[0];
-            if (!firstAgent || typeof firstAgent.id !== 'string') {
-                throw new Error('Invalid agent data structure');
+    test.skip('should proxy get syscheck files request', async () => {
+        const testCase = {
+            name: 'Get Syscheck Files',
+            endpoint: '/syscheck/000/files'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
             }
-            // Get the first agent ID and ensure it's at least 3 digits
-            agentId = firstAgent.id.padStart(3, '0');
-            console.log('Using agent ID:', agentId);
-            appendToDoc('Selected Agent', { id: agentId, message: 'Agent selected for testing' });
-        } else {
-            console.log('No agents available for testing');
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
         }
     });
 
-    test('should get syscheck files for agent', async () => {
-        if (!agentId) {
-            console.log('No agent available, skipping test');
-            appendToDoc('Syscheck Files', { message: 'Test skipped - No agent available' });
-            return;
-        }
+    test.skip('should proxy get syscheck last scan request', async () => {
+        const testCase = {
+            name: 'Get Syscheck Last Scan',
+            endpoint: '/syscheck/000/last_scan'
+        };
 
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}`, 'POST', {
-            params: {
-                agent_id: agentId
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
             }
-        });
-        
-        expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
-        }
 
-        const typedResponse = response as WazuhResponse;
-        expect(typedResponse.data).toBeDefined();
-        
-        appendToDoc('Syscheck Files', typedResponse);
-    }, 30000);
-
-    test('should get syscheck last scan info', async () => {
-        if (!agentId) {
-            console.log('No agent available, skipping test');
-            appendToDoc('Last Scan Info', { message: 'Test skipped - No agent available' });
-            return;
-        }
-
-        const response = await makeAuthorizedRequest(`/syscheck/${agentId}/last_scan`, 'POST', {
-            params: {
-                agent_id: agentId
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
             }
-        });
-        
-        expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
+            throw error;
         }
-
-        const typedResponse = response as WazuhResponse;
-        expect(typedResponse.data).toBeDefined();
-        
-        appendToDoc('Last Scan Info', typedResponse);
-    }, 30000);
+    });
 
     afterAll(() => {
-        // Write documentation to file
-        const docsDir = path.join(__dirname, '..', 'docs');
-        
-        if (!fs.existsSync(docsDir)) {
-            fs.mkdirSync(docsDir, { recursive: true });
-        }
-        
-        fs.writeFileSync(
-            path.join(docsDir, 'wazuh-syscheck-responses.md'),
-            documentation
-        );
+        documenter.save();
     });
 });

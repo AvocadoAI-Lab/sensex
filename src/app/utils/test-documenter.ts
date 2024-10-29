@@ -33,7 +33,7 @@ export class TestDocumenter {
         this.yamlStructure = '';
         this.logs = [];
         this.testName = testName;
-        this.docsDir = path.join(__dirname, '..', '..', 'docs');
+        this.docsDir = path.join(__dirname, '..', 'docs');
         
         const baseFilename = this.testName.toLowerCase().replace(/\s+/g, '-');
         this.testDir = path.join(this.docsDir, TestDocumenter.timestamp!, baseFilename);

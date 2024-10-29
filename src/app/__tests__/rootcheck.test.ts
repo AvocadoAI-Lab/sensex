@@ -1,7 +1,88 @@
-describe('Wazuh Rootcheck API Flow', () => {
-    test.skip('Rootcheck endpoints are not yet supported', () => {
-        // Rootcheck endpoints not yet implemented
-        // Tests will be implemented when endpoint support is added
-        expect(true).toBe(true);
+import { makeAuthorizedRequest } from '../utils/auth-helper';
+import {TestDocumenter} from "@/app/utils/test-documenter";
+
+jest.setTimeout(30000); // 增加超時時間到30秒
+
+describe('Wazuh Rootcheck API Through Rust Proxy', () => {
+    let documenter: TestDocumenter;
+
+    beforeAll(() => {
+        TestDocumenter.setTimestamp();
+        TestDocumenter.resetInstance();
+        documenter = TestDocumenter.getInstance('Wazuh Rootcheck API');
+    });
+
+    test.skip('should proxy get rootcheck database request', async () => {
+        const testCase = {
+            name: 'Get Rootcheck Database',
+            endpoint: '/rootcheck/000'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
+            }
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
+        }
+    });
+
+    test.skip('should proxy get rootcheck last scan request', async () => {
+        const testCase = {
+            name: 'Get Rootcheck Last Scan',
+            endpoint: '/rootcheck/000/last_scan'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
+            }
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
+        }
+    });
+
+    afterAll(() => {
+        documenter.save();
     });
 });

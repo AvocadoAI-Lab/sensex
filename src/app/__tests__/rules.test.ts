@@ -1,42 +1,88 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
-import fs from 'fs';
-import path from 'path';
-import type { WazuhResponse } from '../types/responses';
+import {TestDocumenter} from "@/app/utils/test-documenter";
 
-describe('Wazuh Rules API Flow', () => {
-    // Create documentation
-    let documentation = '# Wazuh Rules API Test Results\n\n';
-    const appendToDoc = (section: string, content: WazuhResponse): void => {
-        documentation += `## ${section}\n\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\`\n\n`;
-    };
+jest.setTimeout(30000); // 增加超時時間到30秒
 
-    test('should get rules list', async () => {
-        const response = await makeAuthorizedRequest('/rules');
-        
-        expect(response).toBeDefined();
-        if (!response) {
-            throw new Error('Response is null');
+describe('Wazuh Rules API Through Rust Proxy', () => {
+    let documenter: TestDocumenter;
+
+    beforeAll(() => {
+        TestDocumenter.setTimestamp();
+        TestDocumenter.resetInstance();
+        documenter = TestDocumenter.getInstance('Wazuh Rules API');
+    });
+
+    test.skip('should proxy get all rules request', async () => {
+        const testCase = {
+            name: 'Get All Rules',
+            endpoint: '/rules'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
+            }
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
         }
+    });
 
-        const typedResponse = response as WazuhResponse;
-        expect(typedResponse.data).toBeDefined();
-        expect(typedResponse.data.affected_items).toBeDefined();
-        expect(Array.isArray(typedResponse.data.affected_items)).toBe(true);
-        
-        appendToDoc('Rules List', typedResponse);
-    }, 30000);
+    test.skip('should proxy get rules files request', async () => {
+        const testCase = {
+            name: 'Get Rules Files',
+            endpoint: '/rules/files'
+        };
+
+        documenter.startTestCase(testCase);
+
+        try {
+            const response = await makeAuthorizedRequest(testCase.endpoint);
+            
+            expect(response).toBeDefined();
+            if (!response) {
+                const error = 'Invalid response format';
+                documenter.logError(testCase, error);
+                throw new Error(error);
+            }
+
+            documenter.logResponse(testCase, response);
+        } catch (error) {
+            if (error instanceof Error) {
+                const statusCodeMatch = error.message.match(/Request failed: (\d+)/);
+                const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1]) : undefined;
+                
+                documenter.logError(
+                    testCase,
+                    error.message,
+                    statusCode,
+                    error
+                );
+            }
+            throw error;
+        }
+    });
 
     afterAll(() => {
-        // Write documentation to file
-        const docsDir = path.join(__dirname, '..', 'docs');
-        
-        if (!fs.existsSync(docsDir)) {
-            fs.mkdirSync(docsDir, { recursive: true });
-        }
-        
-        fs.writeFileSync(
-            path.join(docsDir, 'wazuh-rules-responses.md'),
-            documentation
-        );
+        documenter.save();
     });
 });

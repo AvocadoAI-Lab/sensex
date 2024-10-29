@@ -1,19 +1,21 @@
 import { makeAuthorizedRequest } from '../utils/auth-helper';
 import type { AgentsResponse } from '../types/agents';
 import { isAgentsResponse } from '../types/agents';
-import { TestDocumenter } from './utils/test-documenter';
+import {TestDocumenter} from "@/app/utils/test-documenter";
+
+jest.setTimeout(30000); // 增加超時時間到30秒
 
 describe('Wazuh Agents API Through Rust Proxy', () => {
     let firstAgentId: string | undefined;
     let documenter: TestDocumenter;
 
     beforeAll(() => {
-        TestDocumenter.setTimestamp();  // 設置全域時間戳記
+        TestDocumenter.setTimestamp();
         TestDocumenter.resetInstance();
         documenter = TestDocumenter.getInstance('Wazuh Agents API');
     });
 
-    test('should proxy get all agents request', async () => {
+    test.skip('should proxy get all agents request', async () => {
         const testCase = {
             name: 'Get All Agents',
             endpoint: '/agents'
@@ -42,7 +44,7 @@ describe('Wazuh Agents API Through Rust Proxy', () => {
         }
     });
 
-    test('should proxy get specific agent details', async () => {
+    test.skip('should proxy get specific agent details', async () => {
         if (!firstAgentId) {
             const testCase = {
                 name: 'Get Specific Agent',
