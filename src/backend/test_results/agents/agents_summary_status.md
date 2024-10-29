@@ -16,8 +16,8 @@
       "total": 54
     },
     "connection": {
-      "active": 11,
-      "disconnected": 43,
+      "active": 12,
+      "disconnected": 42,
       "never_connected": 0,
       "pending": 0,
       "total": 54
