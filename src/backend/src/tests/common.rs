@@ -3,10 +3,6 @@ pub const TEST_USERNAME: &str = "wazuh-wui";
 pub const TEST_PASSWORD: &str = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
 
 use crate::client::WazuhClient;
-use crate::create_router;
-use axum::Router;
-use std::net::SocketAddr;
-use tower_http::cors::{Any, CorsLayer};
 
 pub async fn get_test_client() -> (WazuhClient, String) {
     let client = WazuhClient::new();
@@ -14,26 +10,6 @@ pub async fn get_test_client() -> (WazuhClient, String) {
         .await
         .expect("Failed to get auth token");
     (client, token)
-}
-
-// 新增: 創建測試服務器
-pub fn create_test_server() -> Router {
-    create_router().layer(
-        CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any)
-    )
-}
-
-// 新增: 啟動測試服務器
-pub async fn start_test_server(router: Router) -> SocketAddr {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 0));
-    let server = axum::Server::bind(&addr)
-        .serve(router.into_make_service());
-    let addr = server.local_addr();
-    tokio::spawn(server);
-    addr
 }
 
 // 輔助函數：檢查回應狀態是否表示成功

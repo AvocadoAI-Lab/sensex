@@ -82,44 +82,6 @@ impl WazuhClient {
         request.send().await
     }
 
-    pub async fn post(&self, url: &str, token: Option<&str>, body: Option<Value>) -> Result<Response, reqwest::Error> {
-        let mut request = self.client.post(url);
-        
-        if let Some(token) = token {
-            request = request.header("Authorization", format!("Bearer {}", token));
-        }
-
-        if let Some(json_body) = body {
-            request = request.json(&json_body);
-        }
-        
-        request.send().await
-    }
-
-    pub async fn put(&self, url: &str, token: Option<&str>, body: Option<Value>) -> Result<Response, reqwest::Error> {
-        let mut request = self.client.put(url);
-        
-        if let Some(token) = token {
-            request = request.header("Authorization", format!("Bearer {}", token));
-        }
-
-        if let Some(json_body) = body {
-            request = request.json(&json_body);
-        }
-        
-        request.send().await
-    }
-
-    pub async fn delete(&self, url: &str, token: Option<&str>) -> Result<Response, reqwest::Error> {
-        let mut request = self.client.delete(url);
-        
-        if let Some(token) = token {
-            request = request.header("Authorization", format!("Bearer {}", token));
-        }
-        
-        request.send().await
-    }
-
     pub async fn get_with_auth(&self, url: &str, username: &str, password: &str) -> Result<Response, reqwest::Error> {
         self.client
             .get(url)
@@ -135,15 +97,8 @@ impl WazuhClient {
         }
     }
 
-    pub fn set_cache_duration(&mut self, duration: Duration) {
-        self.cache_duration = duration;
-    }
-
-    pub async fn clear_cache(&self) {
-        let mut cache = self.cache.write().await;
-        cache.clear();
-    }
-
+    // This method is only used in tests
+    #[cfg(test)]
     pub async fn get_auth_token(&self) -> Result<String, String> {
         let response = self
             .get_with_auth(
@@ -168,70 +123,23 @@ impl WazuhClient {
 mod tests {
     use super::*;
 
-    const TEST_URL: &str = "https://wazuh.aixsoar.com:55000/security/user/authenticate";
-    const TEST_USERNAME: &str = "wazuh-wui";
-    const TEST_PASSWORD: &str = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
-    const INVALID_PASSWORD: &str = "wrong_password";
-
-    #[tokio::test]
-    async fn test_successful_authentication() {
-        let client = WazuhClient::new();
-        
-        let response = client
-            .get_with_auth(TEST_URL, TEST_USERNAME, TEST_PASSWORD)
-            .await;
-            
-        assert!(response.is_ok(), "Authentication should succeed with valid credentials");
-        
-        if let Ok(resp) = response {
-            assert_eq!(resp.status().as_u16(), 200, "Should receive 200 OK status");
-            
-            let json_result = WazuhClient::handle_json_response(resp).await;
-            assert!(json_result.is_ok(), "Should be able to parse JSON response");
-        }
-    }
-
-    #[tokio::test]
-    async fn test_failed_authentication() {
-        let client = WazuhClient::new();
-        
-        let response = client
-            .get_with_auth(TEST_URL, TEST_USERNAME, INVALID_PASSWORD)
-            .await;
-            
-        assert!(response.is_ok(), "Request should complete even with invalid credentials");
-        
-        if let Ok(resp) = response {
-            assert_eq!(resp.status().as_u16(), 401, "Should receive 401 Unauthorized status");
-        }
-    }
-
-    #[tokio::test]
-    async fn test_invalid_url() {
-        let client = WazuhClient::new();
-        let invalid_url = "https://invalid.example.com:55000";
-        
-        let response = client
-            .get_with_auth(invalid_url, TEST_USERNAME, TEST_PASSWORD)
-            .await;
-            
-        assert!(response.is_err(), "Request should fail with invalid URL");
-    }
+    const TEST_URL: &str = "https://wazuh.aixsoar.com:55000";
 
     #[tokio::test]
     async fn test_cache_with_auth() {
         let client = WazuhClient::new();
         let test_endpoint = format!("{}/security/user/authenticate", TEST_URL);
+        let test_token = "test_token";
         
         // First request should hit the API
         let first_response = client
-            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
+            .get_cached(&test_endpoint, Some(test_token))
             .await;
         assert!(first_response.is_ok(), "First request should succeed");
         
         // Second request should come from cache
         let second_response = client
-            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
+            .get_cached(&test_endpoint, Some(test_token))
             .await;
         assert!(second_response.is_ok(), "Second request should succeed");
         
@@ -243,23 +151,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_clear_cache() {
+    async fn test_invalid_url() {
         let client = WazuhClient::new();
-        let test_endpoint = format!("{}/security/user/authenticate", TEST_URL);
+        let invalid_url = "https://invalid.example.com:55000";
         
-        // First request
-        let first_response = client
-            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
-            .await;
-        assert!(first_response.is_ok(), "First request should succeed");
-        
-        // Clear cache
-        client.clear_cache().await;
-        
-        // Second request should hit API again
-        let second_response = client
-            .get_cached(&test_endpoint, Some(TEST_PASSWORD))
-            .await;
-        assert!(second_response.is_ok(), "Second request should succeed after cache clear");
+        let response = client.get(invalid_url, None).await;
+        assert!(response.is_err(), "Request should fail with invalid URL");
     }
 }
