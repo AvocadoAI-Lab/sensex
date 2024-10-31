@@ -1,6 +1,6 @@
 use super::common::{BASE_URL, get_test_client};
 use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
-use super::analyze_structure::{analyze_json_structure, print_structure};
+use super::analyze_structure::{analyze_json_structure, print_json_structure};
 use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use std::fs;
@@ -93,8 +93,8 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
         match test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
             Ok(json_value) => {
                 // 分析響應結構
-                let structure = analyze_json_structure(&json_value);
-                let structure_output = print_structure(&structure, 0);
+                let paths = analyze_json_structure(&json_value);
+                let structure_output = print_json_structure(&paths, 0);
                 
                 // 創建結構分析文件
                 let structure_file_path = Path::new("test_results")
