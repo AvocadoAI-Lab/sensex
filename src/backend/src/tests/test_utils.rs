@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use super::analyze_structure::{analyze_json_structure, print_json_structure};
 
 #[derive(Clone)]
 pub struct TestEndpoint {
@@ -46,13 +47,13 @@ pub async fn test_endpoint(
     // Parse response text to JSON Value
     let json_value: Value = serde_json::from_str(&text)?;
     
-    // Write test result
-    write_test_result(&endpoint, status, &json_value, module_name).await?;
+    // Write test result and structure analysis
+    write_test_results(&endpoint, status, &json_value, module_name).await?;
     
     Ok(json_value)
 }
 
-async fn write_test_result(
+async fn write_test_results(
     endpoint: &TestEndpoint,
     status: u16,
     json_value: &Value,
@@ -70,11 +71,9 @@ async fn write_test_result(
         .trim_start_matches('_')
         .to_string();
     
+    // 寫入API響應結果
     let report_path = report_dir.join(format!("{}.md", file_name));
-
-    // 格式化JSON
     let pretty_json = serde_json::to_string_pretty(&json_value)?;
-    
     let result_text = format!("# {} {}\n\n\
                               ## Status Code\n{}\n\n\
                               ## Parameters\n{}\n\n\
@@ -85,8 +84,17 @@ async fn write_test_result(
         endpoint.params.as_deref().unwrap_or("無"),
         pretty_json
     );
-
     fs::write(&report_path, result_text)?;
+
+    // 寫入結構分析結果
+    let structure_path = report_dir.join(format!("{}_structure.md", file_name));
+    let paths = analyze_json_structure(&json_value);
+    let structure_output = print_json_structure(&paths, 0);
+    fs::write(&structure_path, format!(
+        "# Endpoint: {}\n\n## Response Structure:\n```\n{}\n```",
+        endpoint.path,
+        structure_output
+    ))?;
 
     // 更新索引文件
     let index_path = report_dir.join("README.md");
