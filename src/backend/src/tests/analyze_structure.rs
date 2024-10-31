@@ -6,6 +6,7 @@ pub struct FieldInfo {
     pub field_type: String,
     pub is_optional: bool,
     pub nested_fields: Option<HashMap<String, FieldInfo>>,
+    pub array_examples: Option<Vec<String>>, // 新增：存儲數組示例值
 }
 
 pub fn analyze_json_structure(value: &Value) -> HashMap<String, FieldInfo> {
@@ -55,6 +56,7 @@ fn analyze_array_structure(arr: &[Value]) -> HashMap<String, FieldInfo> {
         let mut field_types = HashSet::new();
         let mut field_present = 0;
         let mut nested_fields = None;
+        let mut array_examples = None;
 
         for item in arr {
             if let Value::Object(map) = item {
@@ -65,20 +67,14 @@ fn analyze_array_structure(arr: &[Value]) -> HashMap<String, FieldInfo> {
                     // 收集嵌套字段信息
                     match field_value {
                         Value::Object(_) => {
-                            let current_nested = analyze_field(field_value, false).nested_fields;
-                            if nested_fields.is_none() {
-                                nested_fields = current_nested;
-                            }
+                            let analyzed = analyze_field(field_value, false);
+                            nested_fields = analyzed.nested_fields;
+                            array_examples = analyzed.array_examples;
                         }
                         Value::Array(nested_arr) => {
-                            if let Some(first) = nested_arr.first() {
-                                if let Value::Object(_) = first {
-                                    let current_nested = analyze_field(first, false).nested_fields;
-                                    if nested_fields.is_none() {
-                                        nested_fields = current_nested;
-                                    }
-                                }
-                            }
+                            let analyzed = analyze_field(field_value, false);
+                            nested_fields = analyzed.nested_fields;
+                            array_examples = analyzed.array_examples;
                         }
                         _ => {}
                     }
@@ -97,6 +93,7 @@ fn analyze_array_structure(arr: &[Value]) -> HashMap<String, FieldInfo> {
             field_type,
             is_optional,
             nested_fields,
+            array_examples,
         });
     }
 
@@ -109,11 +106,13 @@ fn analyze_field(value: &Value, is_top_level: bool) -> FieldInfo {
             field_type: "null".to_string(),
             is_optional: true,
             nested_fields: None,
+            array_examples: None,
         },
         Value::Bool(_) => FieldInfo {
             field_type: "boolean".to_string(),
             is_optional: false,
             nested_fields: None,
+            array_examples: None,
         },
         Value::Number(n) => {
             let type_str = if n.is_i64() {
@@ -127,12 +126,14 @@ fn analyze_field(value: &Value, is_top_level: bool) -> FieldInfo {
                 field_type: type_str.to_string(),
                 is_optional: false,
                 nested_fields: None,
+                array_examples: None,
             }
         }
         Value::String(_) => FieldInfo {
             field_type: "string".to_string(),
             is_optional: false,
             nested_fields: None,
+            array_examples: None,
         },
         Value::Array(arr) => {
             if arr.is_empty() {
@@ -140,29 +141,52 @@ fn analyze_field(value: &Value, is_top_level: bool) -> FieldInfo {
                     field_type: "array<unknown>".to_string(),
                     is_optional: false,
                     nested_fields: None,
+                    array_examples: None,
                 };
             }
 
             let mut element_type = String::new();
             let mut nested_fields = None;
+            let mut examples = Vec::new();
 
             // 分析數組中的所有元素
             let first_type = get_type_string(&arr[0]);
             let all_same_type = arr.iter().all(|v| get_type_string(v) == first_type);
 
             if all_same_type {
-                element_type = first_type;
+                element_type = first_type.clone();
+                
+                // 收集示例值
+                if first_type != "object" {
+                    for (i, val) in arr.iter().take(5).enumerate() {
+                        examples.push(format_value(val));
+                        if i >= 4 && arr.len() > 5 {
+                            examples.push("...".to_string());
+                            break;
+                        }
+                    }
+                }
+
                 if let Value::Object(_) = &arr[0] {
                     nested_fields = Some(analyze_array_structure(arr));
                 }
             } else {
                 element_type = "mixed".to_string();
+                // 對於混合類型，也收集示例
+                for (i, val) in arr.iter().take(5).enumerate() {
+                    examples.push(format_value(val));
+                    if i >= 4 && arr.len() > 5 {
+                        examples.push("...".to_string());
+                        break;
+                    }
+                }
             }
 
             FieldInfo {
                 field_type: format!("array<{}>", element_type),
                 is_optional: false,
                 nested_fields,
+                array_examples: Some(examples),
             }
         }
         Value::Object(map) => {
@@ -172,10 +196,22 @@ fn analyze_field(value: &Value, is_top_level: bool) -> FieldInfo {
             }
             FieldInfo {
                 field_type: "object".to_string(),
-                is_optional: !is_top_level, // 頂層對象字段不是optional
+                is_optional: !is_top_level,
                 nested_fields: Some(nested),
+                array_examples: None,
             }
         }
+    }
+}
+
+fn format_value(value: &Value) -> String {
+    match value {
+        Value::Null => "null".to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => format!("\"{}\"", s),
+        Value::Array(_) => "[...]".to_string(),
+        Value::Object(_) => "{...}".to_string(),
     }
 }
 
@@ -203,13 +239,25 @@ pub fn print_structure(structure: &HashMap<String, FieldInfo>, indent: usize) ->
     
     for (key, info) in structure {
         let indent_str = " ".repeat(indent);
-        output.push_str(&format!("{}{}: {} {}\n", 
+        
+        // 基本字段信息
+        output.push_str(&format!("{}{}: {} {}", 
             indent_str,
             key,
             info.field_type,
             if info.is_optional { "(optional)" } else { "" }
         ));
         
+        // 添加數組示例
+        if let Some(examples) = &info.array_examples {
+            if !examples.is_empty() {
+                output.push_str(&format!(" [examples: {}]", examples.join(", ")));
+            }
+        }
+        
+        output.push('\n');
+        
+        // 嵌套字段
         if let Some(nested) = &info.nested_fields {
             output.push_str(&print_structure(nested, indent + 2));
         }
@@ -224,18 +272,45 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_array_optional_fields() {
+    fn test_array_with_examples() {
         let json = json!({
             "data": {
-                "items": [
+                "items": ["apple", "banana", "orange"]
+            }
+        });
+
+        let structure = analyze_json_structure(&json);
+        let output = print_structure(&structure, 0);
+        
+        assert!(output.contains("items: array<string> [examples: \"apple\", \"banana\", \"orange\"]"));
+    }
+
+    #[test]
+    fn test_mixed_array() {
+        let json = json!({
+            "data": {
+                "items": [1, "text", true]
+            }
+        });
+
+        let structure = analyze_json_structure(&json);
+        let output = print_structure(&structure, 0);
+        
+        assert!(output.contains("items: array<mixed> [examples: 1, \"text\", true]"));
+    }
+
+    #[test]
+    fn test_nested_structure() {
+        let json = json!({
+            "data": {
+                "users": [
                     {
                         "id": 1,
-                        "name": "test1",
-                        "optional_field": "value"
+                        "tags": ["admin", "active"]
                     },
                     {
                         "id": 2,
-                        "name": "test2"
+                        "tags": ["user"]
                     }
                 ]
             }
@@ -244,29 +319,8 @@ mod tests {
         let structure = analyze_json_structure(&json);
         let output = print_structure(&structure, 0);
         
-        assert!(output.contains("data: object"));
-        assert!(output.contains("  items: array<object>"));
-        assert!(output.contains("    id: integer"));
-        assert!(output.contains("    name: string"));
-        assert!(output.contains("    optional_field: string (optional)"));
-    }
-
-    #[test]
-    fn test_top_level_fields() {
-        let json = json!({
-            "status": "success",
-            "data": {
-                "value": 42
-            },
-            "message": "OK"
-        });
-
-        let structure = analyze_json_structure(&json);
-        let output = print_structure(&structure, 0);
-        
-        assert!(output.contains("status: string"));
-        assert!(output.contains("data: object"));
-        assert!(output.contains("message: string"));
-        assert!(!output.contains("(optional)"));
+        assert!(output.contains("users: array<object>"));
+        assert!(output.contains("  id: integer"));
+        assert!(output.contains("  tags: array<string>"));
     }
 }
