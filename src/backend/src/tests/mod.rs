@@ -5,7 +5,6 @@ pub mod analyze_structure;
 
 pub mod agents_tests;
 pub mod auth_tests;
-pub mod cluster_tests;
 pub mod decoders_tests;
 pub mod groups_tests;
 pub mod lists_tests;

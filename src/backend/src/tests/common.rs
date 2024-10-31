@@ -5,7 +5,7 @@ pub const TEST_USERNAME: &str = "wazuh-wui";
 pub const TEST_PASSWORD: &str = "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*";
 
 // Commonly used test IDs
-pub const TEST_AGENT_ID: &str = "001";
+pub const TEST_AGENT_ID: &str = "005";
 pub const TEST_GROUP_ID: &str = "default";
 
 use crate::client::WazuhClient;

@@ -3,7 +3,6 @@ use axum::routing::get;
 
 mod agents;
 mod auth;
-mod cluster;
 mod decoders;
 mod groups;
 mod lists;
@@ -18,7 +17,6 @@ pub fn create_router() -> Router {
     Router::new()
         .merge(agents::routes())
         .merge(auth::routes())
-        .merge(cluster::routes())
         .merge(decoders::routes())
         .merge(groups::routes())
         .merge(lists::routes())
