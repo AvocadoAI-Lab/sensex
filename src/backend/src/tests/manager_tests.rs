@@ -1,96 +1,31 @@
-use super::common::{WAZUH_URL, PROXY_URL, get_test_client};
-use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
-use reqwest::Client;
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+use super::test_framework::TestFramework;
+use crate::endpoints;
 
 const MODULE_NAME: &str = "manager";
 
 #[tokio::test]
 async fn test_manager_endpoints() -> Result<(), Box<dyn std::error::Error>> {
-    // 設置測試目錄
-    setup_test_directory(MODULE_NAME)?;
+    let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // 獲取認證 token
-    let (_, token) = get_test_client().await;
-    
-    // 創建 HTTP client
-    let client = Client::new();
-
-    // 創建 headers
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", token))?);
-
-    // 基本請求結構
-    let base_request = serde_json::json!({
-        "endpoint": WAZUH_URL,
-        "token": token
-    });
-
-    // 定義所有要測試的endpoints
-    let endpoints = vec![
+    let endpoints = endpoints!(framework,
         // Base API info
-        TestEndpoint::new(
-            "/",
-            None,
-            Some(base_request.clone())
-        ),
+        "/",
         
         // Manager status and info
-        TestEndpoint::new(
-            "/manager/status",
-            None,
-            Some(base_request.clone())
-        ),
-        TestEndpoint::new(
-            "/manager/info",
-            None,
-            Some(base_request.clone())
-        ),
-        TestEndpoint::new(
-            "/manager/configuration",
-            None,
-            Some(base_request.clone())
-        ),
+        "/manager/status",
+        "/manager/info",
+        "/manager/configuration",
         
         // Statistics endpoints
-        TestEndpoint::new(
-            "/manager/stats",
-            None,
-            Some(base_request.clone())
-        ),
-        TestEndpoint::new(
-            "/manager/stats/hourly",
-            None,
-            Some(base_request.clone())
-        ),
-        TestEndpoint::new(
-            "/manager/stats/weekly",
-            None,
-            Some(base_request.clone())
-        ),
+        "/manager/stats",
+        "/manager/stats/hourly",
+        "/manager/stats/weekly",
         
         // Logs endpoints
-        TestEndpoint::new(
-            "/manager/logs",
-            None,
-            Some(base_request.clone())
-        ),
-        TestEndpoint::new(
-            "/manager/logs/summary",
-            None,
-            Some(base_request.clone())
-        ),
-    ];
+        "/manager/logs",
+        "/manager/logs/summary"
+    );
 
-    // 測試所有endpoints
-    for endpoint in endpoints {
-        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), PROXY_URL, MODULE_NAME).await {
-            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
-            continue;
-        }
-    }
-
-    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    framework.test_endpoints(endpoints).await?;
     Ok(())
 }

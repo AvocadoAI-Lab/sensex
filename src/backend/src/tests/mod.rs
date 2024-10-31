@@ -1,5 +1,6 @@
 pub mod common;
 pub mod test_utils;
+pub mod test_framework;
 pub mod analyze_structure;
 
 pub mod agents_tests;

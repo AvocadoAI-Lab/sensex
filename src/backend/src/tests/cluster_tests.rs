@@ -1,93 +1,81 @@
-use super::common::{WAZUH_URL, get_test_client, validate_response};
+use super::test_framework::TestFramework;
+use crate::endpoints;
+use serde_json::Value;
+
+const MODULE_NAME: &str = "cluster";
 
 #[tokio::test]
-async fn test_cluster_status() {
-    let (client, token) = get_test_client().await;
+async fn test_cluster_status() -> Result<(), Box<dyn std::error::Error>> {
+    let framework = TestFramework::new(MODULE_NAME).await?;
 
-    println!("Getting cluster status");
-    let status_url = format!("{}/cluster/status", WAZUH_URL);
-    let response = client.get(&status_url, Some(&token))
-        .await
-        .expect("Should get cluster status");
-    
-    let status = response.status();
-    let response_text = response.text().await.expect("Should get response text");
-    
-    assert!(validate_response(
-        "Cluster Status Test",
-        status.as_u16(),
-        &response_text
-    ));
+    let endpoints = endpoints!(framework,
+        "/cluster/status"
+    );
+
+    framework.test_endpoints(endpoints).await?;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_cluster_nodes() {
-    let (client, token) = get_test_client().await;
+async fn test_cluster_nodes() -> Result<(), Box<dyn std::error::Error>> {
+    let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // 首先檢查集群狀態
-    let status_url = format!("{}/cluster/status", WAZUH_URL);
-    let response = client.get(&status_url, Some(&token))
-        .await
-        .expect("Should get cluster status");
-    
-    let status_text = response.text().await.expect("Should get response text");
-    let status_json: serde_json::Value = serde_json::from_str(&status_text).expect("Should parse JSON");
-    
-    // 只有當集群啟用時才測試節點
-    if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
-        if enabled {
-            println!("Getting cluster nodes");
-            let nodes_url = format!("{}/cluster/nodes", WAZUH_URL);
-            let response = client.get(&nodes_url, Some(&token))
-                .await
-                .expect("Should get cluster nodes");
-            
-            let status = response.status();
-            let response_text = response.text().await.expect("Should get response text");
-            
-            assert!(validate_response(
-                "Cluster Nodes Test",
-                status.as_u16(),
-                &response_text
-            ));
-        } else {
-            println!("Cluster is disabled, skipping nodes test");
+    // First check cluster status through proxy
+    let status_endpoint = framework.create_endpoint("/cluster/status");
+    let response = framework.client
+        .post(&format!("{}/cluster/status", framework.proxy_url))
+        .headers(framework.headers.clone())
+        .json(&status_endpoint.request_body.unwrap_or(serde_json::json!({})))
+        .send()
+        .await?
+        .json::<Value>()
+        .await?;
+
+    // Only test nodes if cluster is enabled
+    if let Some(data) = response.get("data") {
+        if let Some(enabled) = data.get("enabled") {
+            if enabled.as_bool().unwrap_or(false) {
+                let endpoints = endpoints!(framework,
+                    "/cluster/nodes"
+                );
+                framework.test_endpoints(endpoints).await?;
+            } else {
+                println!("Cluster is disabled, skipping nodes test");
+            }
         }
     }
+
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_cluster_health() {
-    let (client, token) = get_test_client().await;
+async fn test_cluster_health() -> Result<(), Box<dyn std::error::Error>> {
+    let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // 首先檢查集群狀態
-    let status_url = format!("{}/cluster/status", WAZUH_URL);
-    let response = client.get(&status_url, Some(&token))
-        .await
-        .expect("Should get cluster status");
-    
-    let status_text = response.text().await.expect("Should get response text");
-    let status_json: serde_json::Value = serde_json::from_str(&status_text).expect("Should parse JSON");
-    
-    // 只有當集群啟用時才測試健康狀態
-    if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
-        if enabled {
-            println!("Getting cluster health");
-            let health_url = format!("{}/cluster/healthcheck", WAZUH_URL);
-            let response = client.get(&health_url, Some(&token))
-                .await
-                .expect("Should get cluster health");
-            
-            let status = response.status();
-            let response_text = response.text().await.expect("Should get response text");
-            
-            assert!(validate_response(
-                "Cluster Health Test",
-                status.as_u16(),
-                &response_text
-            ));
-        } else {
-            println!("Cluster is disabled, skipping health test");
+    // First check cluster status through proxy
+    let status_endpoint = framework.create_endpoint("/cluster/status");
+    let response = framework.client
+        .post(&format!("{}/cluster/status", framework.proxy_url))
+        .headers(framework.headers.clone())
+        .json(&status_endpoint.request_body.unwrap_or(serde_json::json!({})))
+        .send()
+        .await?
+        .json::<Value>()
+        .await?;
+
+    // Only test health if cluster is enabled
+    if let Some(data) = response.get("data") {
+        if let Some(enabled) = data.get("enabled") {
+            if enabled.as_bool().unwrap_or(false) {
+                let endpoints = endpoints!(framework,
+                    "/cluster/healthcheck"
+                );
+                framework.test_endpoints(endpoints).await?;
+            } else {
+                println!("Cluster is disabled, skipping health test");
+            }
         }
     }
+
+    Ok(())
 }
