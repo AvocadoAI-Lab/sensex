@@ -1,11 +1,11 @@
-use super::common::{BASE_URL, get_test_client, validate_response};
+use super::common::{WAZUH_URL, get_test_client, validate_response};
 
 #[tokio::test]
 async fn test_cluster_status() {
     let (client, token) = get_test_client().await;
 
     println!("Getting cluster status");
-    let status_url = format!("{}/cluster/status", BASE_URL);
+    let status_url = format!("{}/cluster/status", WAZUH_URL);
     let response = client.get(&status_url, Some(&token))
         .await
         .expect("Should get cluster status");
@@ -25,7 +25,7 @@ async fn test_cluster_nodes() {
     let (client, token) = get_test_client().await;
 
     // 首先檢查集群狀態
-    let status_url = format!("{}/cluster/status", BASE_URL);
+    let status_url = format!("{}/cluster/status", WAZUH_URL);
     let response = client.get(&status_url, Some(&token))
         .await
         .expect("Should get cluster status");
@@ -37,7 +37,7 @@ async fn test_cluster_nodes() {
     if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
         if enabled {
             println!("Getting cluster nodes");
-            let nodes_url = format!("{}/cluster/nodes", BASE_URL);
+            let nodes_url = format!("{}/cluster/nodes", WAZUH_URL);
             let response = client.get(&nodes_url, Some(&token))
                 .await
                 .expect("Should get cluster nodes");
@@ -61,7 +61,7 @@ async fn test_cluster_health() {
     let (client, token) = get_test_client().await;
 
     // 首先檢查集群狀態
-    let status_url = format!("{}/cluster/status", BASE_URL);
+    let status_url = format!("{}/cluster/status", WAZUH_URL);
     let response = client.get(&status_url, Some(&token))
         .await
         .expect("Should get cluster status");
@@ -73,7 +73,7 @@ async fn test_cluster_health() {
     if let Some(enabled) = status_json["data"]["enabled"].as_bool() {
         if enabled {
             println!("Getting cluster health");
-            let health_url = format!("{}/cluster/healthcheck", BASE_URL);
+            let health_url = format!("{}/cluster/healthcheck", WAZUH_URL);
             let response = client.get(&health_url, Some(&token))
                 .await
                 .expect("Should get cluster health");

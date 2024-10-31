@@ -1,11 +1,11 @@
-use super::common::{BASE_URL, TEST_USERNAME, TEST_PASSWORD};
+use super::common::{WAZUH_URL, TEST_USERNAME, TEST_PASSWORD};
 use crate::client::WazuhClient;
 
 #[tokio::test]
 async fn test_auth_flow() {
     // 1. 初始認證測試
     let client = WazuhClient::new();
-    let auth_url = format!("{}/security/user/authenticate", BASE_URL);
+    let auth_url = format!("{}/security/user/authenticate", WAZUH_URL);
     
     println!("Step 1: Testing initial authentication");
     let response = client
@@ -35,7 +35,7 @@ async fn test_auth_flow() {
     
     // 4. 使用 token 訪問受保護的端點
     println!("\nStep 4: Testing protected endpoint access with token");
-    let test_url = format!("{}/agents", BASE_URL);
+    let test_url = format!("{}/agents", WAZUH_URL);
     let response = client.get(&test_url, Some(&token))
         .await
         .expect("Request with token should succeed");
