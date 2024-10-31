@@ -30,21 +30,49 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // 定義所有要測試的endpoints
-    let endpoints = vec![
+    let mut endpoints = vec![
         TestEndpoint::new("/agents", None, Some(base_request.clone())),
-        TestEndpoint::new(
-            &format!("/agents/{}/config/agent/global", AGENT_ID),
-            Some("agent_id, component, configuration"),
-            Some(serde_json::json!({
-                "endpoint": BASE_URL,
-                "token": token,
-                "params": {
-                    "agent_id": AGENT_ID,
-                    "component": "agent",
-                    "configuration": "global"
-                }
-            }))
-        ),
+    ];
+
+    // Add tests for each valid agent configuration
+    for config in ["buffer", "internal", "client", "labels"] {
+        endpoints.push(
+            TestEndpoint::new(
+                &format!("/agents/{}/config/agent/{}", AGENT_ID, config),
+                Some("agent_id, component, configuration"),
+                Some(serde_json::json!({
+                    "endpoint": BASE_URL,
+                    "token": token,
+                    "params": {
+                        "agent_id": AGENT_ID,
+                        "component": "agent",
+                        "configuration": config
+                    }
+                }))
+            )
+        );
+    }
+
+    // Add tests for each valid stats component
+    for component in ["logcollector", "agent"] {
+        endpoints.push(
+            TestEndpoint::new(
+                &format!("/agents/{}/stats/{}", AGENT_ID, component),
+                Some("agent_id, component"),
+                Some(serde_json::json!({
+                    "endpoint": BASE_URL,
+                    "token": token,
+                    "params": {
+                        "agent_id": AGENT_ID,
+                        "component": component
+                    }
+                }))
+            )
+        );
+    }
+
+    // Add remaining endpoints
+    endpoints.extend(vec![
         TestEndpoint::new(
             &format!("/agents/{}/group/is_sync", AGENT_ID),
             Some("agent_id"),
@@ -67,23 +95,11 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }))
         ),
-        TestEndpoint::new(
-            &format!("/agents/{}/stats/analysisd", AGENT_ID),
-            Some("agent_id, component"),
-            Some(serde_json::json!({
-                "endpoint": BASE_URL,
-                "token": token,
-                "params": {
-                    "agent_id": AGENT_ID,
-                    "component": "analysisd"
-                }
-            }))
-        ),
         TestEndpoint::new("/agents/no_group", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/stats/distinct", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/summary/os", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/summary/status", None, Some(base_request.clone())),
-    ];
+    ]);
 
     // 測試所有endpoints
     for endpoint in endpoints {
