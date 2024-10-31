@@ -1,7 +1,10 @@
 use super::common::{BASE_URL, get_test_client};
 use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
+use super::analyze_structure::{analyze_json_structure, print_structure};
 use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+use std::fs;
+use std::path::Path;
 
 const BACKEND_URL: &str = "http://127.0.0.1:3001";
 const AGENT_ID: &str = "001";
@@ -80,22 +83,41 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
             }))
         ),
         TestEndpoint::new("/agents/no_group", None, Some(base_request.clone())),
-        // Temporarily skip the outdated endpoint due to server-side issues
-        // TestEndpoint::new("/agents/outdated", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/stats/distinct", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/summary/os", None, Some(base_request.clone())),
         TestEndpoint::new("/agents/summary/status", None, Some(base_request.clone())),
     ];
 
-    // 測試所有endpoints
+    // 測試所有endpoints並分析其結構
     for endpoint in endpoints {
-        if let Err(e) = test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
-            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
-            // Don't fail the entire test suite for individual endpoint failures
-            continue;
+        match test_endpoint(&client, &headers, endpoint.clone(), BACKEND_URL, MODULE_NAME).await {
+            Ok(json_value) => {
+                // 分析響應結構
+                let structure = analyze_json_structure(&json_value);
+                let structure_output = print_structure(&structure, 0);
+                
+                // 創建結構分析文件
+                let structure_file_path = Path::new("test_results")
+                    .join(MODULE_NAME)
+                    .join(format!("{}_structure.md", endpoint.path.replace("/", "_")));
+                
+                if let Some(parent) = structure_file_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                
+                fs::write(&structure_file_path, format!(
+                    "# Endpoint: {}\n\n## Response Structure:\n```\n{}\n```",
+                    endpoint.path,
+                    structure_output
+                ))?;
+            }
+            Err(e) => {
+                println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
+                continue;
+            }
         }
     }
 
-    println!("\n測試結果已保存到 test_results/{} 目錄", MODULE_NAME);
+    println!("\n測試結果和結構分析已保存到 test_results/{} 目錄", MODULE_NAME);
     Ok(())
 }
