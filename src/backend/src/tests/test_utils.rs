@@ -25,6 +25,26 @@ impl TestEndpoint {
     }
 }
 
+pub async fn write_test_report(module_name: &str, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let report_dir = Path::new("test_results").join(module_name);
+    if !report_dir.exists() {
+        fs::create_dir_all(&report_dir)?;
+    }
+
+    let report_path = report_dir.join("test_report.md");
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+    
+    let report_content = format!(
+        "# {} Test Report\n\n\
+         Generated at: {}\n\n\
+         {}\n",
+        module_name, timestamp, content
+    );
+
+    fs::write(report_path, report_content)?;
+    Ok(())
+}
+
 pub async fn test_endpoint(
     client: &Client,
     headers: &HeaderMap,
@@ -48,7 +68,9 @@ pub async fn test_endpoint(
     let json_value: Value = serde_json::from_str(&text)?;
     
     // Write test result and structure analysis
-    write_test_results(&endpoint, status, &json_value, module_name).await?;
+    if let Err(e) = write_test_results(&endpoint, status, &json_value, module_name).await {
+        println!("Warning: Failed to write test results: {}", e);
+    }
     
     Ok(json_value)
 }

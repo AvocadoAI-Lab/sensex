@@ -10,7 +10,7 @@ pub struct TestFramework {
     pub headers: HeaderMap,
     pub module_name: String,
     pub base_request: Value,
-    pub proxy_url: String,
+    proxy_url: String,
 }
 
 impl TestFramework {
@@ -22,7 +22,9 @@ impl TestFramework {
         let (_, token) = get_test_client().await;
         
         // 創建 HTTP client
-        let client = Client::new();
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()?;
 
         // 創建 headers
         let mut headers = HeaderMap::new();
@@ -32,7 +34,8 @@ impl TestFramework {
         // 基本請求結構
         let base_request = serde_json::json!({
             "endpoint": WAZUH_URL,
-            "token": token
+            "token": token,
+            "url": WAZUH_URL
         });
 
         Ok(Self {
@@ -44,25 +47,31 @@ impl TestFramework {
         })
     }
 
-    pub async fn test_endpoint(&self, endpoint: TestEndpoint) -> Result<(), Box<dyn Error>> {
-        if let Err(e) = test_endpoint(
-            &self.client,
-            &self.headers,
-            endpoint.clone(),
-            PROXY_URL,
-            &self.module_name
-        ).await {
-            println!("Warning: Endpoint {} failed with error: {}", endpoint.path, e);
-        }
-        Ok(())
-    }
+    pub async fn test_endpoint(&self, endpoint: TestEndpoint) -> Result<Value, Box<dyn Error>> {
+        let max_retries = 3;
+        let mut last_error = None;
 
-    pub async fn test_endpoints(&self, endpoints: Vec<TestEndpoint>) -> Result<(), Box<dyn Error>> {
-        for endpoint in endpoints {
-            self.test_endpoint(endpoint).await?;
+        for attempt in 1..=max_retries {
+            match test_endpoint(
+                &self.client,
+                &self.headers,
+                endpoint.clone(),
+                &self.proxy_url,
+                &self.module_name
+            ).await {
+                Ok(json_value) => return Ok(json_value),
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < max_retries {
+                        println!("Attempt {} failed, retrying...", attempt);
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    }
+                }
+            }
         }
-        println!("\n測試結果已保存到 test_results/{} 目錄", self.module_name);
-        Ok(())
+
+        // 如果所有重試都失敗了，返回錯誤
+        Err(last_error.unwrap())
     }
 
     // Helper method to create a basic endpoint
