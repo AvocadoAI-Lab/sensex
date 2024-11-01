@@ -1,4 +1,4 @@
-use super::test_framework::TestFramework;
+use crate::tests::core::test_framework::TestFramework;
 use crate::endpoints;
 
 const MODULE_NAME: &str = "security";

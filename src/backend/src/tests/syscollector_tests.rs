@@ -1,5 +1,5 @@
-use super::common::TEST_AGENT_ID;
-use super::test_framework::TestFramework;
+use crate::tests::core::common::TEST_AGENT_ID;
+use crate::tests::core::test_framework::TestFramework;
 use crate::endpoints_with_params;
 
 const MODULE_NAME: &str = "syscollector";

@@ -1,4 +1,4 @@
-use super::common::{WAZUH_URL, TEST_USERNAME, TEST_PASSWORD};
+use crate::tests::core::common::{WAZUH_URL, TEST_USERNAME, TEST_PASSWORD};
 use crate::client::WazuhClient;
 
 #[tokio::test]

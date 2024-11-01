@@ -1,5 +1,5 @@
-use super::common::TEST_GROUP_ID;
-use super::test_framework::TestFramework;
+use crate::tests::core::common::TEST_GROUP_ID;
+use crate::tests::core::test_framework::TestFramework;
 use crate::endpoints;
 use crate::endpoints_with_params;
 

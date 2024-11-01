@@ -1,4 +1,4 @@
-use super::test_framework::TestFramework;
+use crate::tests::core::test_framework::TestFramework;
 use crate::endpoints_with_params;
 
 const MODULE_NAME: &str = "groups/with_agents";

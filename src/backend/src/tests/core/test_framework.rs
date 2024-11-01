@@ -2,7 +2,7 @@ use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde_json::Value;
 use std::error::Error;
-use super::common::{WAZUH_URL, PROXY_URL, get_test_client};
+use crate::tests::core::common::{get_test_client, PROXY_URL, WAZUH_URL};
 use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
 
 pub struct TestFramework {

@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
-use super::analyze_structure::{analyze_json_structure, print_json_structure};
+use crate::tests::analyze_structure::{analyze_json_structure, print_json_structure};
 
 #[derive(Clone)]
 pub struct TestEndpoint {
