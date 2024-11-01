@@ -7,6 +7,7 @@ pub mod agents_tests;
 pub mod auth_tests;
 pub mod decoders_tests;
 pub mod groups_tests;
+pub mod groups_with_agents_tests;
 pub mod lists_tests;
 pub mod manager_tests;
 pub mod mitre_tests;

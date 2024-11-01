@@ -26,6 +26,10 @@ async fn test_manager_endpoints() -> Result<(), Box<dyn std::error::Error>> {
         "/manager/logs/summary"
     );
 
-    framework.test_endpoints(endpoints).await?;
+    // Test each endpoint individually
+    for endpoint in endpoints {
+        framework.test_endpoint(endpoint).await?;
+    }
+    
     Ok(())
 }

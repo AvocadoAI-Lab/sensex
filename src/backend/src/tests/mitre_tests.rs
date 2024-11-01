@@ -17,6 +17,10 @@ async fn test_mitre_endpoints() -> Result<(), Box<dyn std::error::Error>> {
         "/mitre/techniques"
     );
 
-    framework.test_endpoints(endpoints).await?;
+    // Test each endpoint individually
+    for endpoint in endpoints {
+        framework.test_endpoint(endpoint).await?;
+    }
+    
     Ok(())
 }

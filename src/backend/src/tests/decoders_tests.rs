@@ -13,6 +13,10 @@ async fn test_decoders_endpoints() -> Result<(), Box<dyn std::error::Error>> {
         "/decoders/parents"
     );
 
-    framework.test_endpoints(endpoints).await?;
+    // Test each endpoint individually
+    for endpoint in endpoints {
+        framework.test_endpoint(endpoint).await?;
+    }
+    
     Ok(())
 }
