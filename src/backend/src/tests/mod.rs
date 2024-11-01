@@ -14,4 +14,3 @@ pub mod rules_tests;
 pub mod security_tests;
 pub mod syscollector_tests;
 pub mod tasks_tests;
-pub mod load_tests;
