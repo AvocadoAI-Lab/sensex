@@ -3,6 +3,8 @@ use reqwest::header::HeaderMap;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
+use std::process::{Command, Stdio};
+use std::io::Write;
 use crate::tests::core::analyze_structure::{analyze_json_structure, print_json_structure};
 
 #[derive(Clone)]
@@ -72,6 +74,53 @@ fn get_filename_with_params(path: &str, request_body: &Option<Value>) -> String 
     filename
 }
 
+fn generate_rust_types(json_value: &Value, output_path: &Path, struct_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Create output directory if it doesn't exist
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    // Convert JSON to string
+    let json_str = serde_json::to_string_pretty(json_value)?;
+
+    // Create json_typegen process with stdin pipe
+    let mut child = Command::new("json_typegen")
+        .arg("-n")
+        .arg(struct_name)
+        .arg("-")  // Use - to read from stdin
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    // Write JSON to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(json_str.as_bytes())?;
+    }
+
+    // Get output
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        // Add derive attributes and module declaration
+        let generated_code = String::from_utf8(output.stdout)?;
+        let final_code = format!(
+            "#[allow(dead_code)]\n\
+             use serde::{{Serialize, Deserialize}};\n\n\
+             {}\n",
+            generated_code
+        );
+        
+        // Write the generated Rust code to file
+        fs::write(output_path, final_code)?;
+        Ok(())
+    } else {
+        Err(format!(
+            "Failed to generate Rust types: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ).into())
+    }
+}
+
 async fn write_test_results(
     endpoint: &TestEndpoint,
     status: u16,
@@ -82,11 +131,13 @@ async fn write_test_results(
     let reports_dir = base_dir.join("reports");
     let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
+    let types_dir = base_dir.join("types");
 
     // Create necessary directories
     fs::create_dir_all(&reports_dir)?;
     fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
+    fs::create_dir_all(&types_dir)?;
 
     // Get filename with parameters substituted
     let file_name = get_filename_with_params(&endpoint.path, &endpoint.request_body);
@@ -94,7 +145,14 @@ async fn write_test_results(
     // 寫入raw JSON到raw目錄
     let raw_path = raw_dir.join(format!("{}.json", file_name));
     let raw_json = serde_json::to_string_pretty(&json_value)?;
-    fs::write(&raw_path, raw_json)?;
+    fs::write(&raw_path, &raw_json)?;
+    
+    // Generate Rust types from JSON
+    let type_name = file_name.replace(".", "_").replace("-", "_");
+    let type_path = types_dir.join(format!("{}.rs", file_name));
+    if let Err(e) = generate_rust_types(json_value, &type_path, &type_name) {
+        println!("Warning: Failed to generate Rust types: {}", e);
+    }
     
     // 寫入API響應結果到reports目錄
     let report_path = reports_dir.join(format!("{}.md", file_name));
@@ -143,6 +201,10 @@ async fn write_test_results(
     index_content.push_str("\n### 結構分析\n\n");
     index_content.push_str(&format!("- [{}](./structures/{}_structure.md)\n", endpoint.path, file_name));
 
+    // Add types section
+    index_content.push_str("\n### Rust Types\n\n");
+    index_content.push_str(&format!("- [{}](./types/{}.rs)\n", endpoint.path, file_name));
+
     // Write the complete content
     fs::write(&index_path, index_content)?;
 
@@ -154,6 +216,7 @@ pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error:
     let reports_dir = base_dir.join("reports");
     let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
+    let types_dir = base_dir.join("types");
 
     // Remove existing directories if they exist
     if base_dir.exists() {
@@ -164,6 +227,7 @@ pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error:
     fs::create_dir_all(&reports_dir)?;
     fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
+    fs::create_dir_all(&types_dir)?;
     
     Ok(())
 }
