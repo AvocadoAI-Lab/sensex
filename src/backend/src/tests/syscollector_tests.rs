@@ -1,6 +1,9 @@
-use crate::tests::core::common::TEST_AGENT_ID;
-use crate::tests::core::test_framework::TestFramework;
-use crate::endpoints_with_params;
+use crate::tests::core::{
+    TestFramework,
+    common::TEST_AGENT_ID,
+    test_helpers::batch_test_endpoints,
+};
+use crate::agent_endpoints;
 
 const MODULE_NAME: &str = "syscollector";
 
@@ -8,58 +11,20 @@ const MODULE_NAME: &str = "syscollector";
 async fn test_syscollector_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     let framework = TestFramework::new(MODULE_NAME).await?;
 
-    let endpoints = endpoints_with_params!(framework,
-        (
-            &format!("/syscollector/{}/hardware", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/hotfixes", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/netaddr", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/netiface", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/netproto", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/os", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/packages", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/ports", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/syscollector/{}/processes", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        )
+    let syscollector_endpoints = agent_endpoints!(framework, TEST_AGENT_ID,
+        "/syscollector/{agent_id}/hardware",
+        "/syscollector/{agent_id}/hotfixes",
+        "/syscollector/{agent_id}/netaddr",
+        "/syscollector/{agent_id}/netiface",
+        "/syscollector/{agent_id}/netproto",
+        "/syscollector/{agent_id}/os",
+        "/syscollector/{agent_id}/packages",
+        "/syscollector/{agent_id}/ports",
+        "/syscollector/{agent_id}/processes"
     );
 
-    // Test each endpoint individually
-    for endpoint in endpoints {
-        framework.test_endpoint(endpoint).await?;
-    }
-    
+    // 批量測試所有端點
+    batch_test_endpoints(&framework, syscollector_endpoints, Some(500)).await;
+
     Ok(())
 }

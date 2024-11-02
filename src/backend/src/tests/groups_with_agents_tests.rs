@@ -1,17 +1,32 @@
-use crate::tests::core::test_framework::TestFramework;
-use crate::tests::core::test_utils::TestEndpoint;
-use crate::endpoints_with_params;
+use crate::tests::core::{
+    TestFramework,
+    test_helpers::batch_test_endpoints,
+};
+use crate::{endpoints, param_endpoints};
 use tokio::time::{sleep, Duration};
 use std::time::Instant;
 
-// Changed from "groups/with_agents" to "groups_with_agents" to avoid subdirectories
 const MODULE_NAME: &str = "groups_with_agents";
 const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY_MS: u64 = 1000;
 
+// 新增: 用於創建組端點的宏
+#[macro_export]
+macro_rules! group_agents_endpoints {
+    ($framework:expr, $groups:expr) => {{
+        let mut endpoints = Vec::new();
+        for group_name in $groups {
+            endpoints.extend(param_endpoints!($framework, "group_id", group_name,
+                "/groups/{group_id}/agents"
+            ));
+        }
+        endpoints
+    }};
+}
+
 async fn retry_test_endpoint(
     framework: &TestFramework,
-    endpoint: TestEndpoint,
+    endpoint: crate::tests::core::test_utils::TestEndpoint,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let start = Instant::now();
     let mut last_error = None;
@@ -45,43 +60,29 @@ async fn retry_test_endpoint(
 async fn test_groups_with_agents() -> Result<(), Box<dyn std::error::Error>> {
     let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // First get all groups with retry mechanism
+    // 獲取所有組
     println!("Fetching groups list...");
     let groups_endpoint = framework.create_endpoint("/groups");
     let groups_response = retry_test_endpoint(&framework, groups_endpoint).await?;
 
-    // Add delay after groups request
+    // 添加延遲
     sleep(Duration::from_millis(500)).await;
 
-    // Create endpoints for each group's agents
-    let mut all_endpoints = Vec::new();
+    // 獲取所有組名
+    let mut group_names = Vec::new();
     if let Some(affected_items) = groups_response["data"]["affected_items"].as_array() {
         for group in affected_items {
             if let Some(group_name) = group["name"].as_str() {
-                println!("Processing group: {}", group_name);
-                all_endpoints.extend(endpoints_with_params!(framework,
-                    (
-                        &format!("/groups/{}/agents", group_name),
-                        "group_id",
-                        serde_json::json!({ "group_id": group_name })
-                    )
-                ));
+                group_names.push(group_name.to_string());
             }
         }
     }
 
-    // Test each endpoint individually with delay between requests
-    for endpoint in all_endpoints {
-        println!("Testing endpoint: {}", endpoint.path);
-        
-        match retry_test_endpoint(&framework, endpoint.clone()).await {
-            Ok(_) => println!("Successfully tested endpoint: {}", endpoint.path),
-            Err(e) => println!("Warning: Failed to test endpoint {}: {}", endpoint.path, e),
-        }
+    // 使用新的宏創建所有組的端點
+    let all_group_endpoints = group_agents_endpoints!(framework, group_names);
 
-        // Add delay between requests
-        sleep(Duration::from_millis(500)).await;
-    }
+    // 批量測試所有端點
+    batch_test_endpoints(&framework, all_group_endpoints, Some(500)).await;
 
     Ok(())
 }

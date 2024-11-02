@@ -1,7 +1,9 @@
-use crate::tests::core::common::TEST_AGENT_ID;
-use crate::tests::core::test_framework::TestFramework;
-use crate::endpoints;
-use crate::endpoints_with_params;
+use crate::tests::core::{
+    TestFramework,
+    common::TEST_AGENT_ID,
+    test_helpers::batch_test_endpoints,
+};
+use crate::{endpoints, agent_endpoints, agent_config_endpoints, agent_stats_endpoints};
 
 const MODULE_NAME: &str = "agents";
 
@@ -9,8 +11,8 @@ const MODULE_NAME: &str = "agents";
 async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // Basic endpoints without parameters
-    let mut endpoints = endpoints!(framework,
+    // 基本端點測試
+    let basic_endpoints = endpoints!(framework,
         "/agents",
         "/agents/no_group",
         "/agents/stats/distinct",
@@ -18,49 +20,34 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
         "/agents/summary/status"
     );
 
-    // Add endpoints with agent configuration parameters
-    endpoints.extend(endpoints_with_params!(framework,
-        (
-            &format!("/agents/{}/group/is_sync", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        ),
-        (
-            &format!("/agents/{}/daemons/stats", TEST_AGENT_ID),
-            "agent_id",
-            serde_json::json!({ "agent_id": TEST_AGENT_ID })
-        )
-    ));
+    // Agent特定端點
+    let agent_specific_endpoints = agent_endpoints!(framework, TEST_AGENT_ID,
+        "/agents/{agent_id}/group/is_sync",
+        "/agents/{agent_id}/daemons/stats"
+    );
 
-    // Add configuration endpoints
-    for config in ["buffer", "internal", "client", "labels"] {
-        endpoints.push(framework.create_endpoint_with_params(
-            &format!("/agents/{}/config/agent/{}", TEST_AGENT_ID, config),
-            "agent_id, component, configuration",
-            serde_json::json!({
-                "agent_id": TEST_AGENT_ID,
-                "component": "agent",
-                "configuration": config
-            })
-        ));
-    }
+    // 配置端點測試 - 使用新的宏
+    let config_endpoints = agent_config_endpoints!(framework, TEST_AGENT_ID,
+        "buffer", "internal", "client", "labels"
+    );
 
-    // Add stats endpoints
-    for component in ["logcollector", "agent"] {
-        endpoints.push(framework.create_endpoint_with_params(
-            &format!("/agents/{}/stats/{}", TEST_AGENT_ID, component),
-            "agent_id, component",
-            serde_json::json!({
-                "agent_id": TEST_AGENT_ID,
-                "component": component
-            })
-        ));
-    }
+    // 統計端點測試 - 使用新的宏
+    let stats_endpoints = agent_stats_endpoints!(framework, TEST_AGENT_ID,
+        "logcollector", "agent"
+    );
 
-    // Test each endpoint individually
-    for endpoint in endpoints {
+    // 批量測試所有端點
+    for endpoint in basic_endpoints {
         framework.test_endpoint(endpoint).await?;
     }
+
+    for endpoint in agent_specific_endpoints {
+        framework.test_endpoint(endpoint).await?;
+    }
+
+    // 使用延遲的批量測試
+    batch_test_endpoints(&framework, config_endpoints, Some(500)).await;
+    batch_test_endpoints(&framework, stats_endpoints, Some(500)).await;
 
     Ok(())
 }

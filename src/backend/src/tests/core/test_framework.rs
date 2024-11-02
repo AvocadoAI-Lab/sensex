@@ -70,16 +70,13 @@ impl TestFramework {
             }
         }
 
-        // 如果所有重試都失敗了，返回錯誤
         Err(last_error.unwrap())
     }
 
-    // Helper method to create a basic endpoint
     pub fn create_endpoint(&self, path: &str) -> TestEndpoint {
         TestEndpoint::new(path, None, Some(self.base_request.clone()))
     }
 
-    // Helper method to create an endpoint with parameters
     pub fn create_endpoint_with_params(&self, path: &str, param_desc: &str, params: Value) -> TestEndpoint {
         let mut request = self.base_request.clone();
         if let Value::Object(ref mut map) = request {
@@ -87,9 +84,75 @@ impl TestFramework {
         }
         TestEndpoint::new(path, Some(param_desc), Some(request))
     }
+
+    pub fn create_agent_endpoint(&self, path_template: &str, agent_id: &str) -> TestEndpoint {
+        let path = path_template.replace("{agent_id}", agent_id);
+        self.create_endpoint_with_params(
+            &path,
+            "agent_id",
+            serde_json::json!({ "agent_id": agent_id })
+        )
+    }
+
+    pub fn create_param_endpoint<T>(&self, path_template: &str, param_name: &str, param_value: T) -> TestEndpoint 
+    where 
+        T: serde::Serialize + std::fmt::Display,
+    {
+        let path = path_template.replace(&format!("{{{}}}", param_name), &param_value.to_string());
+        self.create_endpoint_with_params(
+            &path,
+            param_name,
+            serde_json::json!({ param_name: param_value })
+        )
+    }
+
+    pub fn create_agent_config_endpoint(&self, agent_id: &str, config: &str) -> TestEndpoint {
+        let path = format!("/agents/{}/config/agent/{}", agent_id, config);
+        self.create_endpoint_with_params(
+            &path,
+            "agent_id, component, configuration",
+            serde_json::json!({
+                "agent_id": agent_id,
+                "component": "agent",
+                "configuration": config
+            })
+        )
+    }
+
+    pub fn create_agent_stats_endpoint(&self, agent_id: &str, component: &str) -> TestEndpoint {
+        let path = format!("/agents/{}/stats/{}", agent_id, component);
+        self.create_endpoint_with_params(
+            &path,
+            "agent_id, component",
+            serde_json::json!({
+                "agent_id": agent_id,
+                "component": component
+            })
+        )
+    }
+
+    // 新增: 創建組配置端點的方法
+    pub fn create_group_config_endpoint(&self, group_id: &str) -> TestEndpoint {
+        let path = format!("/groups/{}/configuration", group_id);
+        self.create_endpoint_with_params(
+            &path,
+            "group_id",
+            serde_json::json!({ "group_id": group_id })
+        )
+    }
+
+    // 新增: 創建組文件端點的方法
+    pub fn create_group_files_endpoint(&self, group_id: &str) -> TestEndpoint {
+        let path = format!("/groups/{}/files", group_id);
+        self.create_endpoint_with_params(
+            &path,
+            "group_id",
+            serde_json::json!({ "group_id": group_id })
+        )
+    }
 }
 
-// Macro to create multiple endpoints easily
+// 基本端點宏
 #[macro_export]
 macro_rules! endpoints {
     ($framework:expr, $($path:expr),* $(,)?) => {{
@@ -101,13 +164,73 @@ macro_rules! endpoints {
     }};
 }
 
-// Macro to create endpoints with params
+// Agent端點宏
 #[macro_export]
-macro_rules! endpoints_with_params {
-    ($framework:expr, $(($path:expr, $desc:expr, $params:expr)),* $(,)?) => {{
+macro_rules! agent_endpoints {
+    ($framework:expr, $agent_id:expr, $($path:expr),* $(,)?) => {{
         vec![
             $(
-                $framework.create_endpoint_with_params($path, $desc, $params),
+                $framework.create_agent_endpoint($path, $agent_id),
+            )*
+        ]
+    }};
+}
+
+// 參數化端點宏
+#[macro_export]
+macro_rules! param_endpoints {
+    ($framework:expr, $param_name:expr, $param_value:expr, $($path:expr),* $(,)?) => {{
+        vec![
+            $(
+                $framework.create_param_endpoint($path, $param_name, $param_value),
+            )*
+        ]
+    }};
+}
+
+// Agent配置端點宏
+#[macro_export]
+macro_rules! agent_config_endpoints {
+    ($framework:expr, $agent_id:expr, $($config:expr),* $(,)?) => {{
+        vec![
+            $(
+                $framework.create_agent_config_endpoint($agent_id, $config),
+            )*
+        ]
+    }};
+}
+
+// Agent統計端點宏
+#[macro_export]
+macro_rules! agent_stats_endpoints {
+    ($framework:expr, $agent_id:expr, $($component:expr),* $(,)?) => {{
+        vec![
+            $(
+                $framework.create_agent_stats_endpoint($agent_id, $component),
+            )*
+        ]
+    }};
+}
+
+// 組配置端點宏
+#[macro_export]
+macro_rules! group_config_endpoints {
+    ($framework:expr, $($group_id:expr),* $(,)?) => {{
+        vec![
+            $(
+                $framework.create_group_config_endpoint($group_id),
+            )*
+        ]
+    }};
+}
+
+// 組文件端點宏
+#[macro_export]
+macro_rules! group_files_endpoints {
+    ($framework:expr, $($group_id:expr),* $(,)?) => {{
+        vec![
+            $(
+                $framework.create_group_files_endpoint($group_id),
             )*
         ]
     }};

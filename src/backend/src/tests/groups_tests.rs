@@ -1,7 +1,9 @@
-use crate::tests::core::common::TEST_GROUP_ID;
-use crate::tests::core::test_framework::TestFramework;
-use crate::endpoints;
-use crate::endpoints_with_params;
+use crate::tests::core::{
+    TestFramework,
+    common::TEST_GROUP_ID,
+    test_helpers::batch_test_endpoints,
+};
+use crate::{endpoints, group_config_endpoints, group_files_endpoints};
 
 const MODULE_NAME: &str = "groups";
 
@@ -9,34 +11,22 @@ const MODULE_NAME: &str = "groups";
 async fn test_groups_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     let framework = TestFramework::new(MODULE_NAME).await?;
 
-    // Basic endpoints
-    let mut endpoints = endpoints!(framework,
+    // 基本端點
+    let basic_endpoints = endpoints!(framework,
         "/groups"
     );
 
-    // Add group-specific endpoints
-    endpoints.extend(endpoints_with_params!(framework,
-        (
-            &format!("/groups/{}/files", TEST_GROUP_ID),
-            "group_id",
-            serde_json::json!({ "group_id": TEST_GROUP_ID })
-        ),
-        (
-            &format!("/groups/{}/agents", TEST_GROUP_ID),
-            "group_id",
-            serde_json::json!({ "group_id": TEST_GROUP_ID })
-        ),
-        (
-            &format!("/groups/{}/configuration", TEST_GROUP_ID),
-            "group_id",
-            serde_json::json!({ "group_id": TEST_GROUP_ID })
-        )
-    ));
+    // 組特定端點
+    let group_files = group_files_endpoints!(framework, TEST_GROUP_ID);
+    let group_configs = group_config_endpoints!(framework, TEST_GROUP_ID);
 
-    // Test each endpoint individually
-    for endpoint in endpoints {
+    // 批量測試所有端點
+    for endpoint in basic_endpoints {
         framework.test_endpoint(endpoint).await?;
     }
-    
+
+    batch_test_endpoints(&framework, group_files, Some(500)).await;
+    batch_test_endpoints(&framework, group_configs, Some(500)).await;
+
     Ok(())
 }
