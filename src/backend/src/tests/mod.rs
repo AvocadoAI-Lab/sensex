@@ -1,5 +1,4 @@
 pub mod core;
-pub mod analyze_structure;
 
 pub mod agents_tests;
 pub mod agent_specific_tests;  // New module for agent-specific endpoints

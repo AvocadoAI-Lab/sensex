@@ -3,7 +3,7 @@ use reqwest::header::HeaderMap;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use crate::tests::analyze_structure::{analyze_json_structure, print_json_structure};
+use crate::tests::core::analyze_structure::{analyze_json_structure, print_json_structure};
 
 #[derive(Clone)]
 pub struct TestEndpoint {
