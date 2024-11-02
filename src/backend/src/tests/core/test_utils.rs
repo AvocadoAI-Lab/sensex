@@ -74,11 +74,19 @@ fn get_filename_with_params(path: &str, request_body: &Option<Value>) -> String 
     filename
 }
 
-fn generate_rust_types(json_value: &Value, output_path: &Path, struct_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // Create output directory if it doesn't exist
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
+fn generate_rust_types(json_value: &Value, module_name: &str, endpoint_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Create draft_models directory if it doesn't exist
+    let models_dir = Path::new("draft_models");
+    fs::create_dir_all(models_dir)?;
+
+    // Generate a unique type name based on module and endpoint
+    let type_name = format!("{}_{}",
+        module_name,
+        endpoint_path.replace('/', "_").replace(':', "_").trim_start_matches('_')
+    ).replace(".", "_").replace("-", "_");
+
+    // Create output path
+    let output_path = models_dir.join(format!("{}.rs", type_name));
 
     // Convert JSON to string
     let json_str = serde_json::to_string_pretty(json_value)?;
@@ -86,7 +94,7 @@ fn generate_rust_types(json_value: &Value, output_path: &Path, struct_name: &str
     // Create json_typegen process with stdin pipe
     let mut child = Command::new("json_typegen")
         .arg("-n")
-        .arg(struct_name)
+        .arg(&type_name)
         .arg("-")  // Use - to read from stdin
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -131,13 +139,11 @@ async fn write_test_results(
     let reports_dir = base_dir.join("reports");
     let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
-    let types_dir = base_dir.join("types");
 
     // Create necessary directories
     fs::create_dir_all(&reports_dir)?;
     fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
-    fs::create_dir_all(&types_dir)?;
 
     // Get filename with parameters substituted
     let file_name = get_filename_with_params(&endpoint.path, &endpoint.request_body);
@@ -147,10 +153,8 @@ async fn write_test_results(
     let raw_json = serde_json::to_string_pretty(&json_value)?;
     fs::write(&raw_path, &raw_json)?;
     
-    // Generate Rust types from JSON
-    let type_name = file_name.replace(".", "_").replace("-", "_");
-    let type_path = types_dir.join(format!("{}.rs", file_name));
-    if let Err(e) = generate_rust_types(json_value, &type_path, &type_name) {
+    // Generate Rust types
+    if let Err(e) = generate_rust_types(json_value, module_name, &endpoint.path) {
         println!("Warning: Failed to generate Rust types: {}", e);
     }
     
@@ -201,10 +205,6 @@ async fn write_test_results(
     index_content.push_str("\n### 結構分析\n\n");
     index_content.push_str(&format!("- [{}](./structures/{}_structure.md)\n", endpoint.path, file_name));
 
-    // Add types section
-    index_content.push_str("\n### Rust Types\n\n");
-    index_content.push_str(&format!("- [{}](./types/{}.rs)\n", endpoint.path, file_name));
-
     // Write the complete content
     fs::write(&index_path, index_content)?;
 
@@ -216,7 +216,6 @@ pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error:
     let reports_dir = base_dir.join("reports");
     let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
-    let types_dir = base_dir.join("types");
 
     // Remove existing directories if they exist
     if base_dir.exists() {
@@ -227,7 +226,9 @@ pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error:
     fs::create_dir_all(&reports_dir)?;
     fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
-    fs::create_dir_all(&types_dir)?;
+    
+    // Create draft_models directory if it doesn't exist
+    fs::create_dir_all("draft_models")?;
     
     Ok(())
 }
