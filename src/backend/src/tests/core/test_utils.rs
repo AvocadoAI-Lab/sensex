@@ -1,8 +1,7 @@
 use reqwest::Client;
 use reqwest::header::HeaderMap;
 use serde_json::Value;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::fs;
 use std::path::Path;
 use crate::tests::analyze_structure::{analyze_json_structure, print_json_structure};
 
@@ -23,26 +22,6 @@ impl TestEndpoint {
             request_body,
         }
     }
-}
-
-pub async fn write_test_report(module_name: &str, content: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let report_dir = Path::new("test_results").join(module_name);
-    if !report_dir.exists() {
-        fs::create_dir_all(&report_dir)?;
-    }
-
-    let report_path = report_dir.join("test_report.md");
-    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    
-    let report_content = format!(
-        "# {} Test Report\n\n\
-         Generated at: {}\n\n\
-         {}\n",
-        module_name, timestamp, content
-    );
-
-    fs::write(report_path, report_content)?;
-    Ok(())
 }
 
 pub async fn test_endpoint(
@@ -75,26 +54,50 @@ pub async fn test_endpoint(
     Ok(json_value)
 }
 
+fn get_filename_with_params(path: &str, request_body: &Option<Value>) -> String {
+    let mut filename = path.replace('/', "_").replace(':', "_").trim_start_matches('_').to_string();
+    
+    // Replace parameter placeholders with actual values
+    if let Some(body) = request_body {
+        if let Some(obj) = body.as_object() {
+            for (key, value) in obj {
+                let placeholder = format!("{{{}}}", key);
+                if let Some(value_str) = value.as_str() {
+                    filename = filename.replace(&placeholder, value_str);
+                }
+            }
+        }
+    }
+    
+    filename
+}
+
 async fn write_test_results(
     endpoint: &TestEndpoint,
     status: u16,
     json_value: &Value,
     module_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let report_dir = Path::new("test_results").join(module_name);
-    if !report_dir.exists() {
-        fs::create_dir_all(&report_dir)?;
-    }
+    let base_dir = Path::new("test_results").join(module_name);
+    let reports_dir = base_dir.join("reports");
+    let structures_dir = base_dir.join("structures");
+    let raw_dir = base_dir.join("raw");
 
-    // 將endpoint轉換為檔案名
-    let file_name = endpoint.path
-        .replace('/', "_")
-        .replace(':', "_")
-        .trim_start_matches('_')
-        .to_string();
+    // Create necessary directories
+    fs::create_dir_all(&reports_dir)?;
+    fs::create_dir_all(&structures_dir)?;
+    fs::create_dir_all(&raw_dir)?;
+
+    // Get filename with parameters substituted
+    let file_name = get_filename_with_params(&endpoint.path, &endpoint.request_body);
     
-    // 寫入API響應結果
-    let report_path = report_dir.join(format!("{}.md", file_name));
+    // 寫入raw JSON到raw目錄
+    let raw_path = raw_dir.join(format!("{}.json", file_name));
+    let raw_json = serde_json::to_string_pretty(&json_value)?;
+    fs::write(&raw_path, raw_json)?;
+    
+    // 寫入API響應結果到reports目錄
+    let report_path = reports_dir.join(format!("{}.md", file_name));
     let pretty_json = serde_json::to_string_pretty(&json_value)?;
     let result_text = format!("# {} {}\n\n\
                               ## Status Code\n{}\n\n\
@@ -108,8 +111,8 @@ async fn write_test_results(
     );
     fs::write(&report_path, result_text)?;
 
-    // 寫入結構分析結果
-    let structure_path = report_dir.join(format!("{}_structure.md", file_name));
+    // 寫入結構分析結果到structures目錄
+    let structure_path = structures_dir.join(format!("{}_structure.md", file_name));
     let paths = analyze_json_structure(&json_value);
     let structure_output = print_json_structure(&paths, 0);
     fs::write(&structure_path, format!(
@@ -119,26 +122,48 @@ async fn write_test_results(
     ))?;
 
     // 更新索引文件
-    let index_path = report_dir.join("README.md");
-    if !index_path.exists() {
-        fs::write(&index_path, &format!("# {} Endpoints 測試結果\n\n", module_name))?;
-    }
+    let index_path = base_dir.join("README.md");
+    let mut index_content = String::new();
+    index_content.push_str(&format!(
+        "# {} Endpoints 測試結果\n\n\
+         ## API 響應報告\n\n\
+         以下是API響應的詳細報告：\n\n",
+        module_name
+    ));
 
-    let mut index_file = OpenOptions::new()
-        .append(true)
-        .open(index_path)?;
+    // Add raw section
+    index_content.push_str("\n### Raw JSON\n\n");
+    index_content.push_str(&format!("- [{}](./raw/{}.json)\n", endpoint.path, file_name));
 
-    let index_entry = format!("- [{}](./{}.md)\n", endpoint.path, file_name);
-    index_file.write_all(index_entry.as_bytes())?;
+    // Add reports section
+    index_content.push_str("\n### 響應報告\n\n");
+    index_content.push_str(&format!("- [{}](./reports/{}.md)\n", endpoint.path, file_name));
+
+    // Add structures section
+    index_content.push_str("\n### 結構分析\n\n");
+    index_content.push_str(&format!("- [{}](./structures/{}_structure.md)\n", endpoint.path, file_name));
+
+    // Write the complete content
+    fs::write(&index_path, index_content)?;
 
     Ok(())
 }
 
 pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let report_dir = Path::new("test_results").join(module_name);
-    if report_dir.exists() {
-        fs::remove_dir_all(&report_dir)?;
+    let base_dir = Path::new("test_results").join(module_name);
+    let reports_dir = base_dir.join("reports");
+    let structures_dir = base_dir.join("structures");
+    let raw_dir = base_dir.join("raw");
+
+    // Remove existing directories if they exist
+    if base_dir.exists() {
+        fs::remove_dir_all(&base_dir)?;
     }
-    fs::create_dir_all(&report_dir)?;
+
+    // Create new directories
+    fs::create_dir_all(&reports_dir)?;
+    fs::create_dir_all(&structures_dir)?;
+    fs::create_dir_all(&raw_dir)?;
+    
     Ok(())
 }

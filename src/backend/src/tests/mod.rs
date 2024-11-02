@@ -1,6 +1,8 @@
+pub mod core;
 pub mod analyze_structure;
 
 pub mod agents_tests;
+pub mod agent_specific_tests;  // New module for agent-specific endpoints
 pub mod auth_tests;
 pub mod decoders_tests;
 pub mod groups_tests;
@@ -12,4 +14,3 @@ pub mod rules_tests;
 pub mod security_tests;
 pub mod syscollector_tests;
 pub mod tasks_tests;
-mod core;
