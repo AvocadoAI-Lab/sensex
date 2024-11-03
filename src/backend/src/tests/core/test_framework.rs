@@ -5,6 +5,7 @@ use std::error::Error;
 use crate::tests::core::common::{get_test_client, PROXY_URL, WAZUH_URL};
 use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
 
+#[derive(Clone)]
 pub struct TestFramework {
     pub client: Client,
     pub headers: HeaderMap,
@@ -131,7 +132,6 @@ impl TestFramework {
         )
     }
 
-    // 新增: 創建組配置端點的方法
     pub fn create_group_config_endpoint(&self, group_id: &str) -> TestEndpoint {
         let path = format!("/groups/{}/configuration", group_id);
         self.create_endpoint_with_params(
@@ -141,7 +141,6 @@ impl TestFramework {
         )
     }
 
-    // 新增: 創建組文件端點的方法
     pub fn create_group_files_endpoint(&self, group_id: &str) -> TestEndpoint {
         let path = format!("/groups/{}/files", group_id);
         self.create_endpoint_with_params(
