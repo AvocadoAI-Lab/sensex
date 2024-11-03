@@ -10,3 +10,7 @@ pub mod rules;
 pub mod security;
 pub mod syscollector;
 pub mod tasks;
+pub mod syscheck;    // New
+pub mod sca;         // New
+pub mod rootcheck;   // New
+pub mod ciscat;      // New
