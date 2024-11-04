@@ -104,12 +104,16 @@ async fn verify_data_storage(
         ..Default::default()
     }).await?;
 
-    println!(
-        "Verified storage in collection {}: found {} points for group {}",
-        sanitized_collection,
-        scroll_response.result.len(),
-        group_id
-    );
+    println!("\nVerifying data in collection {}:", sanitized_collection);
+    println!("Found {} points for group {}", scroll_response.result.len(), group_id);
+    
+    // Print the first point's payload as an example
+    if let Some(first_point) = scroll_response.result.first() {
+        println!("Example point payload:");
+        if let Some(data) = first_point.payload.get("data") {
+            println!("Data: {}", data);
+        }
+    }
 
     Ok(())
 }
@@ -123,7 +127,7 @@ async fn store_agent_data(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sanitized_collection = sanitize_collection_name(collection_name);
     
-    println!("Storing data in collection {} for group {} agent {}", 
+    println!("\nStoring data in collection {} for group {} agent {}", 
         sanitized_collection, group_id, agent_id);
 
     let mut payload = std::collections::HashMap::new();
@@ -149,6 +153,7 @@ async fn store_agent_data(
 
     println!("Successfully stored point {} in collection {}", point_id, sanitized_collection);
     
+    // Verify the data was stored and show its contents
     verify_data_storage(client, collection_name, group_id).await?;
     
     Ok(())
