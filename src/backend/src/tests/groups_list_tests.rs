@@ -4,34 +4,191 @@ use std::collections::HashSet;
 use futures::stream::{self, StreamExt};
 use tokio::sync::Semaphore;
 use std::sync::Arc;
+use qdrant_client::prelude::*;
+use qdrant_client::qdrant::{
+    CreateCollection, VectorParams, Distance, PointStruct, Value,
+    Vectors, PointId, WriteOrdering, VectorsConfig, ScrollPoints, Filter,
+    Match, FieldCondition, r#match::MatchValue
+};
+use serde_json::Value as JsonValue;
+use uuid::Uuid;
 
 const MODULE_NAME: &str = "groups_list";
-const MAX_CONCURRENT_REQUESTS: usize = 5; // Adjust this value based on server capacity
+const MAX_CONCURRENT_REQUESTS: usize = 5;
+const VECTOR_SIZE: u64 = 384;
 
-async fn test_agent_endpoints(framework: &TestFramework, agent_id: &str, semaphore: Arc<Semaphore>) -> Result<(), Box<dyn std::error::Error>> {
+async fn init_qdrant_client() -> Result<Arc<QdrantClient>, Box<dyn std::error::Error>> {
+    let client = QdrantClient::from_url("http://localhost:6334").build()?;
+    
+    match client.list_collections().await {
+        Ok(collections) => {
+            println!("Successfully connected to Qdrant. Found {} existing collections", collections.collections.len());
+            for collection in collections.collections {
+                println!("Found collection: {}", collection.name);
+            }
+        }
+        Err(e) => {
+            return Err(format!("Failed to connect to Qdrant: {}", e).into());
+        }
+    }
+
+    Ok(Arc::new(client))
+}
+
+fn sanitize_collection_name(name: &str) -> String {
+    name.chars()
+        .map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .collect()
+}
+
+async fn verify_collection_exists(client: &QdrantClient, collection_name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    let collections = client.list_collections().await?;
+    Ok(collections.collections.iter().any(|c| c.name == collection_name))
+}
+
+async fn create_collection_if_not_exists(client: &QdrantClient, collection_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let sanitized_name = sanitize_collection_name(collection_name);
+    
+    if !verify_collection_exists(client, &sanitized_name).await? {
+        println!("Creating new collection: {}", sanitized_name);
+        client.create_collection(&CreateCollection {
+            collection_name: sanitized_name.clone(),
+            vectors_config: Some(VectorsConfig {
+                config: Some(qdrant_client::qdrant::vectors_config::Config::Params(
+                    VectorParams {
+                        size: VECTOR_SIZE,
+                        distance: Distance::Cosine.into(),
+                        ..Default::default()
+                    }
+                ))
+            }),
+            ..Default::default()
+        }).await?;
+        println!("Successfully created collection: {}", sanitized_name);
+    } else {
+        println!("Collection {} already exists", sanitized_name);
+    }
+    Ok(())
+}
+
+async fn verify_data_storage(
+    client: &QdrantClient,
+    collection_name: &str,
+    group_id: &str
+) -> Result<(), Box<dyn std::error::Error>> {
+    let sanitized_collection = sanitize_collection_name(collection_name);
+    
+    let field_condition = FieldCondition {
+        key: "group_id".to_string(),
+        r#match: Some(Match {
+            match_value: Some(MatchValue::Keyword(group_id.to_string())),
+        }),
+        range: None,
+        geo_bounding_box: None,
+        geo_radius: None,
+        values_count: None,
+        geo_polygon: None,
+        datetime_range: None,
+    };
+
+    let scroll_response = client.scroll(&ScrollPoints {
+        collection_name: sanitized_collection.clone(),
+        filter: Some(Filter {
+            should: vec![],
+            must: vec![field_condition.into()],
+            must_not: vec![],
+            min_should: None,
+        }),
+        limit: Some(10),
+        with_payload: Some(true.into()),
+        ..Default::default()
+    }).await?;
+
+    println!(
+        "Verified storage in collection {}: found {} points for group {}",
+        sanitized_collection,
+        scroll_response.result.len(),
+        group_id
+    );
+
+    Ok(())
+}
+
+async fn store_agent_data(
+    client: &QdrantClient, 
+    collection_name: &str,
+    group_id: &str,
+    agent_id: &str,
+    data: JsonValue
+) -> Result<(), Box<dyn std::error::Error>> {
+    let sanitized_collection = sanitize_collection_name(collection_name);
+    
+    println!("Storing data in collection {} for group {} agent {}", 
+        sanitized_collection, group_id, agent_id);
+
+    let mut payload = std::collections::HashMap::new();
+    payload.insert("group_id".to_string(), Value::from(group_id.to_string()));
+    payload.insert("agent_id".to_string(), Value::from(agent_id.to_string()));
+    payload.insert("data".to_string(), Value::from(serde_json::to_string(&data)?));
+
+    let vector = vec![0.0; VECTOR_SIZE as usize];
+    let point_id = Uuid::new_v4().to_string();
+
+    let point = PointStruct {
+        id: Some(point_id.clone().into()),
+        payload,
+        vectors: Some(vector.into()),
+    };
+
+    client.upsert_points(
+        &sanitized_collection,
+        None,
+        vec![point],
+        None
+    ).await?;
+
+    println!("Successfully stored point {} in collection {}", point_id, sanitized_collection);
+    
+    verify_data_storage(client, collection_name, group_id).await?;
+    
+    Ok(())
+}
+
+async fn test_agent_endpoints(
+    framework: &TestFramework, 
+    agent_id: &str, 
+    group_id: &str,
+    client: &Arc<QdrantClient>,
+    semaphore: Arc<Semaphore>
+) -> Result<(), Box<dyn std::error::Error>> {
     let endpoints = vec![
-        "/syscollector/{agent_id}/hardware",
-        "/syscollector/{agent_id}/hotfixes",
-        "/syscollector/{agent_id}/netaddr",
-        "/syscollector/{agent_id}/netiface",
-        "/syscollector/{agent_id}/netproto",
-        "/syscollector/{agent_id}/os",
-        "/syscollector/{agent_id}/packages",
-        "/syscollector/{agent_id}/ports",
-        "/syscollector/{agent_id}/processes",
-        "/syscheck/{agent_id}",
-        "/syscheck/{agent_id}/last_scan",
-        "/sca/{agent_id}",
-        "/rootcheck/{agent_id}",
-        "/rootcheck/{agent_id}/last_scan",
-        "/ciscat/{agent_id}/results"
+        ("syscollector_hardware", "/syscollector/{agent_id}/hardware"),
+        ("syscollector_hotfixes", "/syscollector/{agent_id}/hotfixes"),
+        ("syscollector_netaddr", "/syscollector/{agent_id}/netaddr"),
+        ("syscollector_netiface", "/syscollector/{agent_id}/netiface"),
+        ("syscollector_netproto", "/syscollector/{agent_id}/netproto"),
+        ("syscollector_os", "/syscollector/{agent_id}/os"),
+        ("syscollector_packages", "/syscollector/{agent_id}/packages"),
+        ("syscollector_ports", "/syscollector/{agent_id}/ports"),
+        ("syscollector_processes", "/syscollector/{agent_id}/processes"),
+        ("syscheck", "/syscheck/{agent_id}"),
+        ("syscheck_last_scan", "/syscheck/{agent_id}/last_scan"),
+        ("sca", "/sca/{agent_id}"),
+        ("rootcheck", "/rootcheck/{agent_id}"),
+        ("rootcheck_last_scan", "/rootcheck/{agent_id}/last_scan"),
+        ("ciscat_results", "/ciscat/{agent_id}/results")
     ];
 
-    // Process endpoints concurrently with controlled parallelism
+    for (collection_name, _) in &endpoints {
+        create_collection_if_not_exists(client, collection_name).await?;
+    }
+
     let futures = stream::iter(endpoints)
-        .map(|endpoint_template| {
+        .map(|(collection_name, endpoint_template)| {
             let framework = framework.clone();
             let agent_id = agent_id.to_string();
+            let group_id = group_id.to_string();
+            let client = Arc::clone(client);
             let semaphore = Arc::clone(&semaphore);
             
             async move {
@@ -40,11 +197,22 @@ async fn test_agent_endpoints(framework: &TestFramework, agent_id: &str, semapho
                 let endpoint = framework.create_agent_endpoint(endpoint_template, &agent_id);
                 
                 match framework.test_endpoint(endpoint).await {
-                    Ok(_) => println!("Successfully tested endpoint"),
+                    Ok(response) => {
+                        println!("Successfully tested endpoint");
+                        match store_agent_data(
+                            &client,
+                            collection_name,
+                            &group_id,
+                            &agent_id,
+                            response
+                        ).await {
+                            Ok(_) => println!("Successfully stored data in Qdrant"),
+                            Err(e) => println!("Failed to store data in Qdrant: {}", e)
+                        }
+                    },
                     Err(e) => println!("Endpoint returned error (this may be normal if agent has no data): {}", e)
                 }
                 
-                // Reduced delay between requests
                 tokio::time::sleep(Duration::from_millis(100)).await;
             }
         })
@@ -58,34 +226,45 @@ async fn test_agent_endpoints(framework: &TestFramework, agent_id: &str, semapho
 async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
     let framework = TestFramework::new(MODULE_NAME).await?;
     let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_REQUESTS));
+    
+    let client = init_qdrant_client().await?;
+    println!("Successfully initialized Qdrant client");
 
-    // Get groups
     let groups_endpoint = framework.create_endpoint("/groups");
     let groups_response = framework.test_endpoint(groups_endpoint).await?;
 
-    // Store unique agent IDs
     let mut agent_ids = HashSet::new();
-
-    // Create a longer-lived empty Vec for the unwrap_or
     let empty_vec = Vec::new();
-    
-    // Get the affected items array or use empty vec
     let affected_items = groups_response["data"]["affected_items"]
         .as_array()
         .unwrap_or(&empty_vec);
 
-    // Extract groups and their agents concurrently
+    println!("Found {} groups to process", affected_items.len());
+
     let group_futures = stream::iter(
         affected_items
             .iter()
-            .filter_map(|group| group["name"].as_str().map(String::from))
+            .filter_map(|group| {
+                group["name"].as_str().map(|name| (name.to_string(), group.clone()))
+            })
     )
-    .map(|group_name| {
+    .map(|(group_name, group_data)| {
         let framework = framework.clone();
+        let client = Arc::clone(&client);
         let semaphore = Arc::clone(&semaphore);
         
         async move {
             let _permit = semaphore.acquire().await.unwrap();
+            println!("\nProcessing group: {}", group_name);
+            
+            create_collection_if_not_exists(&client, "groups").await.unwrap_or_else(|e| {
+                println!("Failed to create groups collection: {}", e);
+            });
+            
+            if let Err(e) = store_agent_data(&client, "groups", &group_name, "group_info", group_data).await {
+                println!("Failed to store group data: {}", e);
+            }
+
             let agents_endpoint = framework.create_param_endpoint(
                 "/groups/{group_id}/agents",
                 "group_id",
@@ -95,11 +274,15 @@ async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
             match framework.test_endpoint(agents_endpoint).await {
                 Ok(agents_response) => {
                     if let Some(affected_items) = agents_response["data"]["affected_items"].as_array() {
+                        println!("Found {} agents in group {}", affected_items.len(), group_name);
                         affected_items
                             .iter()
-                            .filter_map(|agent| agent["id"].as_str().map(String::from))
+                            .filter_map(|agent| {
+                                agent["id"].as_str().map(|id| (id.to_string(), group_name.clone()))
+                            })
                             .collect::<Vec<_>>()
                     } else {
+                        println!("No agents found in group {}", group_name);
                         Vec::new()
                     }
                 }
@@ -112,24 +295,31 @@ async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
     })
     .buffer_unordered(MAX_CONCURRENT_REQUESTS);
 
-    // Collect all agent IDs
-    let agent_ids_vec: Vec<Vec<String>> = group_futures.collect().await;
-    for ids in agent_ids_vec {
-        agent_ids.extend(ids);
+    let agent_group_pairs: Vec<Vec<(String, String)>> = group_futures.collect().await;
+    
+    for pairs in &agent_group_pairs {
+        for (agent_id, _) in pairs {
+            agent_ids.insert(agent_id.clone());
+        }
     }
 
-    // Test all endpoints for each unique agent concurrently
-    println!("\nTesting endpoints for {} unique agents", agent_ids.len());
+    let agent_group_map: Vec<(String, String)> = agent_group_pairs
+        .into_iter()
+        .flatten()
+        .collect();
+
+    println!("\nProcessing {} unique agents", agent_ids.len());
     
-    let agent_futures = stream::iter(agent_ids)
-        .map(|agent_id| {
+    let agent_futures = stream::iter(agent_group_map)
+        .map(|(agent_id, group_id)| {
             let framework = framework.clone();
+            let client = Arc::clone(&client);
             let semaphore = Arc::clone(&semaphore);
             
             async move {
-                println!("\n=== Testing endpoints for agent {} ===", agent_id);
-                if let Err(e) = test_agent_endpoints(&framework, &agent_id, semaphore).await {
-                    println!("Error testing agent {}: {}", agent_id, e);
+                println!("\n=== Processing agent {} in group {} ===", agent_id, group_id);
+                if let Err(e) = test_agent_endpoints(&framework, &agent_id, &group_id, &client, semaphore).await {
+                    println!("Error processing agent {}: {}", agent_id, e);
                 }
             }
         })
