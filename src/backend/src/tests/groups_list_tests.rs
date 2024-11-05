@@ -8,14 +8,44 @@ use qdrant_client::prelude::*;
 use qdrant_client::qdrant::{
     CreateCollection, VectorParams, Distance, PointStruct, Value,
     Vectors, PointId, WriteOrdering, VectorsConfig, ScrollPoints, Filter,
-    Match, FieldCondition, r#match::MatchValue
+    Match, FieldCondition, r#match::MatchValue, SearchPoints, SearchParams
 };
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
+use reqwest;
+use dotenv::dotenv;
 
 const MODULE_NAME: &str = "groups_list";
 const MAX_CONCURRENT_REQUESTS: usize = 5;
-const VECTOR_SIZE: u64 = 384;
+const VECTOR_SIZE: u64 = 1536;  // Updated to match text-embedding-ada-002 dimension
+const EMBEDDING_MODEL: &str = "text-embedding-ada-002";
+const OPENAI_API_URL: &str = "https://api.openai.com/v1/embeddings";
+
+async fn generate_embedding(text: &str) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    let api_key = std::env::var("OPENAI_API_KEY")
+        .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(OPENAI_API_URL)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&serde_json::json!({
+            "input": text,
+            "model": EMBEDDING_MODEL
+        }))
+        .send()
+        .await?;
+
+    let response_json: serde_json::Value = response.json().await?;
+    let embedding = response_json["data"][0]["embedding"]
+        .as_array()
+        .ok_or("Invalid embedding response")?
+        .iter()
+        .map(|v| v.as_f64().unwrap_or_default() as f32)
+        .collect();
+
+    Ok(embedding)
+}
 
 async fn init_qdrant_client() -> Result<Arc<QdrantClient>, Box<dyn std::error::Error>> {
     let client = QdrantClient::from_url("http://localhost:6334").build()?;
@@ -71,6 +101,43 @@ async fn create_collection_if_not_exists(client: &QdrantClient, collection_name:
     Ok(())
 }
 
+async fn search_similar_data(
+    client: &QdrantClient,
+    collection_name: &str,
+    query_text: &str,
+    limit: u64
+) -> Result<Vec<(f32, serde_json::Value)>, Box<dyn std::error::Error>> {
+    let sanitized_collection = sanitize_collection_name(collection_name);
+    let query_vector = generate_embedding(query_text).await?;
+
+    let search_response = client.search_points(&SearchPoints {
+        collection_name: sanitized_collection,
+        vector: query_vector,
+        limit,
+        with_payload: Some(true.into()),
+        params: Some(SearchParams {
+            hnsw_ef: Some(128),
+            exact: Some(false),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }).await?;
+
+    let results = search_response.result
+        .into_iter()
+        .map(|point| {
+            let score = point.score;
+            let data = point.payload.get("data")
+                .and_then(|v| v.as_str())
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or(serde_json::Value::Null);
+            (score, data)
+        })
+        .collect();
+
+    Ok(results)
+}
+
 async fn verify_data_storage(
     client: &QdrantClient,
     collection_name: &str,
@@ -107,7 +174,6 @@ async fn verify_data_storage(
     println!("\nVerifying data in collection {}:", sanitized_collection);
     println!("Found {} points for group {}", scroll_response.result.len(), group_id);
     
-    // Print the first point's payload as an example
     if let Some(first_point) = scroll_response.result.first() {
         println!("Example point payload:");
         if let Some(data) = first_point.payload.get("data") {
@@ -133,9 +199,13 @@ async fn store_agent_data(
     let mut payload = std::collections::HashMap::new();
     payload.insert("group_id".to_string(), Value::from(group_id.to_string()));
     payload.insert("agent_id".to_string(), Value::from(agent_id.to_string()));
-    payload.insert("data".to_string(), Value::from(serde_json::to_string(&data)?));
+    
+    // Convert data to string for embedding generation
+    let data_str = serde_json::to_string(&data)?;
+    payload.insert("data".to_string(), Value::from(data_str.clone()));
 
-    let vector = vec![0.0; VECTOR_SIZE as usize];
+    // Generate embedding for the data
+    let vector = generate_embedding(&data_str).await?;
     let point_id = Uuid::new_v4().to_string();
 
     let point = PointStruct {
@@ -229,6 +299,9 @@ async fn test_agent_endpoints(
 
 #[tokio::test]
 async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
+    // Load environment variables from .env file
+    dotenv().ok();
+    
     let framework = TestFramework::new(MODULE_NAME).await?;
     let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_REQUESTS));
     
@@ -331,5 +404,23 @@ async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
         .buffer_unordered(MAX_CONCURRENT_REQUESTS);
 
     agent_futures.collect::<Vec<_>>().await;
+
+    // Example of searching similar data
+    println!("\nSearching for similar data examples:");
+    
+    // Search for hardware info
+    let hardware_results = search_similar_data(&client, "syscollector_hardware", "CPU information", 3).await?;
+    println!("\nSimilar hardware data:");
+    for (score, data) in hardware_results {
+        println!("Score: {}, Data: {}", score, data);
+    }
+
+    // Search for OS info
+    let os_results = search_similar_data(&client, "syscollector_os", "Windows operating system", 3).await?;
+    println!("\nSimilar OS data:");
+    for (score, data) in os_results {
+        println!("Score: {}, Data: {}", score, data);
+    }
+
     Ok(())
 }
