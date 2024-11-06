@@ -5,7 +5,6 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::io::Write;
-use crate::tests::core::analyze_structure::{analyze_json_structure, print_json_structure};
 
 #[derive(Clone)]
 pub struct TestEndpoint {
@@ -137,12 +136,10 @@ async fn write_test_results(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let base_dir = Path::new("test_results").join(module_name);
     let reports_dir = base_dir.join("reports");
-    let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
 
     // Create necessary directories
     fs::create_dir_all(&reports_dir)?;
-    fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
 
     // Get filename with parameters substituted
@@ -173,16 +170,6 @@ async fn write_test_results(
     );
     fs::write(&report_path, result_text)?;
 
-    // 寫入結構分析結果到structures目錄
-    let structure_path = structures_dir.join(format!("{}_structure.md", file_name));
-    let paths = analyze_json_structure(&json_value);
-    let structure_output = print_json_structure(&paths, 0);
-    fs::write(&structure_path, format!(
-        "# Endpoint: {}\n\n## Response Structure:\n```\n{}\n```",
-        endpoint.path,
-        structure_output
-    ))?;
-
     // 更新索引文件
     let index_path = base_dir.join("README.md");
     let mut index_content = String::new();
@@ -201,10 +188,6 @@ async fn write_test_results(
     index_content.push_str("\n### 響應報告\n\n");
     index_content.push_str(&format!("- [{}](./reports/{}.md)\n", endpoint.path, file_name));
 
-    // Add structures section
-    index_content.push_str("\n### 結構分析\n\n");
-    index_content.push_str(&format!("- [{}](./structures/{}_structure.md)\n", endpoint.path, file_name));
-
     // Write the complete content
     fs::write(&index_path, index_content)?;
 
@@ -214,7 +197,6 @@ async fn write_test_results(
 pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let base_dir = Path::new("test_results").join(module_name);
     let reports_dir = base_dir.join("reports");
-    let structures_dir = base_dir.join("structures");
     let raw_dir = base_dir.join("raw");
 
     // Remove existing directories if they exist
@@ -224,7 +206,6 @@ pub fn setup_test_directory(module_name: &str) -> Result<(), Box<dyn std::error:
 
     // Create new directories
     fs::create_dir_all(&reports_dir)?;
-    fs::create_dir_all(&structures_dir)?;
     fs::create_dir_all(&raw_dir)?;
     
     // Create draft_models directory if it doesn't exist
