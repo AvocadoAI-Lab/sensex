@@ -2234,6 +2234,7 @@ dependencies = [
  "futures",
  "hyper 0.14.31",
  "langchain-rust",
+ "lazy_static",
  "qdrant-client",
  "reqwest 0.11.27",
  "serde",
