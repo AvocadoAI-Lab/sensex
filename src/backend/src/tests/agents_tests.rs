@@ -1,6 +1,6 @@
 use crate::tests::core::{
     TestFramework,
-    common::TEST_AGENT_ID,
+    common::test_agent_id,
     test_helpers::batch_test_endpoints,
 };
 use crate::{endpoints, agent_endpoints, agent_config_endpoints, agent_stats_endpoints};
@@ -21,18 +21,18 @@ async fn test_agents_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Agent特定端點
-    let agent_specific_endpoints = agent_endpoints!(framework, TEST_AGENT_ID,
+    let agent_specific_endpoints = agent_endpoints!(framework, test_agent_id(),
         "/agents/{agent_id}/group/is_sync",
         "/agents/{agent_id}/daemons/stats"
     );
 
     // 配置端點測試 - 使用新的宏
-    let config_endpoints = agent_config_endpoints!(framework, TEST_AGENT_ID,
+    let config_endpoints = agent_config_endpoints!(framework, test_agent_id(),
         "buffer", "internal", "client", "labels"
     );
 
     // 統計端點測試 - 使用新的宏
-    let stats_endpoints = agent_stats_endpoints!(framework, TEST_AGENT_ID,
+    let stats_endpoints = agent_stats_endpoints!(framework, test_agent_id(),
         "logcollector", "agent"
     );
 

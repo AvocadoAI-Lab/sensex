@@ -1,6 +1,6 @@
 use crate::tests::core::{
     TestFramework,
-    common::TEST_AGENT_ID,
+    common::test_agent_id,
     test_helpers::batch_test_endpoints,
 };
 use crate::{agent_endpoints, agent_config_endpoints, agent_stats_endpoints};
@@ -11,17 +11,17 @@ pub async fn test_agent_specific_endpoints() -> Result<(), Box<dyn std::error::E
     let framework = TestFramework::new(MODULE_NAME).await?;
 
     // 配置端點測試 - 使用新的宏
-    let config_endpoints = agent_config_endpoints!(framework, TEST_AGENT_ID,
+    let config_endpoints = agent_config_endpoints!(framework, test_agent_id(),
         "buffer", "internal", "client", "labels"
     );
 
     // 統計端點測試 - 使用新的宏
-    let stats_endpoints = agent_stats_endpoints!(framework, TEST_AGENT_ID,
+    let stats_endpoints = agent_stats_endpoints!(framework, test_agent_id(),
         "logcollector", "agent"
     );
 
     // Syscollector端點
-    let syscollector_endpoints = agent_endpoints!(framework, TEST_AGENT_ID,
+    let syscollector_endpoints = agent_endpoints!(framework, test_agent_id(),
         "/syscollector/{agent_id}/hardware",
         "/syscollector/{agent_id}/hotfixes",
         "/syscollector/{agent_id}/netaddr",

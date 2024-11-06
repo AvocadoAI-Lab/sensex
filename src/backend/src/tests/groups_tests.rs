@@ -1,6 +1,6 @@
 use crate::tests::core::{
     TestFramework,
-    common::TEST_GROUP_ID,
+    common::test_group_id,
     test_helpers::batch_test_endpoints,
 };
 use crate::{endpoints, group_config_endpoints, group_files_endpoints};
@@ -17,8 +17,8 @@ async fn test_groups_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 組特定端點
-    let group_files = group_files_endpoints!(framework, TEST_GROUP_ID);
-    let group_configs = group_config_endpoints!(framework, TEST_GROUP_ID);
+    let group_files = group_files_endpoints!(framework, test_group_id());
+    let group_configs = group_config_endpoints!(framework, test_group_id());
 
     // 批量測試所有端點
     for endpoint in basic_endpoints {

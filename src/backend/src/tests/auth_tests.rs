@@ -1,15 +1,15 @@
-use crate::tests::core::common::{WAZUH_URL, TEST_USERNAME, TEST_PASSWORD};
+use crate::tests::core::common::{wazuh_url, test_username, test_password};
 use crate::client::WazuhClient;
 
 #[tokio::test]
 async fn test_auth_flow() {
     // 1. 初始認證測試
     let client = WazuhClient::new();
-    let auth_url = format!("{}/security/user/authenticate", WAZUH_URL);
+    let auth_url = format!("{}/security/user/authenticate", wazuh_url());
     
     println!("Step 1: Testing initial authentication");
     let response = client
-        .get_with_auth(&auth_url, TEST_USERNAME, TEST_PASSWORD)
+        .get_with_auth(&auth_url, test_username(), test_password())
         .await
         .expect("Authentication request failed");
     
@@ -21,7 +21,7 @@ async fn test_auth_flow() {
     // 2. 測試錯誤認證
     println!("\nStep 2: Testing failed authentication");
     let response = client
-        .get_with_auth(&auth_url, TEST_USERNAME, "wrong_password")
+        .get_with_auth(&auth_url, test_username(), "wrong_password")
         .await
         .expect("Request should complete");
     
@@ -35,7 +35,7 @@ async fn test_auth_flow() {
     
     // 4. 使用 token 訪問受保護的端點
     println!("\nStep 4: Testing protected endpoint access with token");
-    let test_url = format!("{}/agents", WAZUH_URL);
+    let test_url = format!("{}/agents", wazuh_url());
     let response = client.get(&test_url, Some(&token))
         .await
         .expect("Request with token should succeed");

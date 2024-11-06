@@ -4,6 +4,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use dotenv::dotenv;
+use std::env;
 
 struct CacheEntry {
     data: Value,
@@ -19,6 +21,8 @@ pub struct WazuhClient {
 
 impl WazuhClient {
     pub fn new() -> Self {
+        dotenv().ok(); // Load environment variables from .env file
+        
         let client = Client::builder()
             .danger_accept_invalid_certs(true)
             .build()
@@ -100,12 +104,16 @@ impl WazuhClient {
     // This method is only used in tests
     #[cfg(test)]
     pub async fn get_auth_token(&self) -> Result<String, String> {
+        dotenv().ok(); // Ensure environment variables are loaded in tests
+        
+        let wazuh_url = env::var("WAZUH_URL").expect("WAZUH_URL must be set");
+        let username = env::var("WAZUH_USERNAME").expect("WAZUH_USERNAME must be set");
+        let password = env::var("WAZUH_PASSWORD").expect("WAZUH_PASSWORD must be set");
+
+        let auth_url = format!("{}/security/user/authenticate", wazuh_url);
+        
         let response = self
-            .get_with_auth(
-                "https://wazuh.aixsoar.com:55000/security/user/authenticate",
-                "wazuh-wui",
-                "S.Ouv.51BHmQ*wqhq0O?eKSAyshu0Z.*"
-            )
+            .get_with_auth(&auth_url, &username, &password)
             .await
             .map_err(|e| format!("Authentication request failed: {}", e))?;
 
@@ -122,13 +130,14 @@ impl WazuhClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    const TEST_URL: &str = "https://wazuh.aixsoar.com:55000";
+    use dotenv::dotenv;
 
     #[tokio::test]
     async fn test_cache_with_auth() {
+        dotenv().ok(); // Load environment variables for tests
         let client = WazuhClient::new();
-        let test_endpoint = format!("{}/security/user/authenticate", TEST_URL);
+        let wazuh_url = env::var("WAZUH_URL").expect("WAZUH_URL must be set");
+        let test_endpoint = format!("{}/security/user/authenticate", wazuh_url);
         let test_token = "test_token";
         
         // First request should hit the API

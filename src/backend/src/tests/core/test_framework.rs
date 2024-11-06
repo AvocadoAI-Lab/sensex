@@ -2,7 +2,7 @@ use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde_json::Value;
 use std::error::Error;
-use crate::tests::core::common::{get_test_client, PROXY_URL, WAZUH_URL};
+use crate::tests::core::common::{get_test_client, proxy_url, wazuh_url};
 use super::test_utils::{TestEndpoint, test_endpoint, setup_test_directory};
 
 #[derive(Clone)]
@@ -34,9 +34,9 @@ impl TestFramework {
 
         // 基本請求結構
         let base_request = serde_json::json!({
-            "endpoint": WAZUH_URL,
+            "endpoint": wazuh_url(),
             "token": token,
-            "url": WAZUH_URL
+            "url": wazuh_url()
         });
 
         Ok(Self {
@@ -44,7 +44,7 @@ impl TestFramework {
             headers,
             module_name: module_name.to_string(),
             base_request,
-            proxy_url: PROXY_URL.to_string(),
+            proxy_url: proxy_url().to_string(),
         })
     }
 
