@@ -1,10 +1,10 @@
 use crate::tests::core::{
-    TestFramework,
     test_helpers::batch_test_endpoints,
+    TestFramework,
 };
-use crate::{endpoints, param_endpoints};
-use tokio::time::{sleep, Duration};
+use crate::param_endpoints;
 use std::time::Instant;
+use tokio::time::{sleep, Duration};
 
 const MODULE_NAME: &str = "groups_with_agents";
 const MAX_RETRIES: u32 = 3;

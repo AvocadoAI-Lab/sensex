@@ -1,19 +1,19 @@
 use crate::tests::core::TestFramework;
-use tokio::time::Duration;
-use std::collections::HashSet;
+use dotenv::dotenv;
 use futures::stream::{self, StreamExt};
-use tokio::sync::Semaphore;
-use std::sync::Arc;
 use qdrant_client::prelude::*;
 use qdrant_client::qdrant::{
-    CreateCollection, VectorParams, Distance, PointStruct, Value,
-    Vectors, PointId, WriteOrdering, VectorsConfig, ScrollPoints, Filter,
-    Match, FieldCondition, r#match::MatchValue, SearchPoints, SearchParams
+    r#match::MatchValue, CreateCollection, Distance, FieldCondition, Filter
+    , Match, PointStruct, ScrollPoints,
+    SearchParams, SearchPoints, Value, VectorParams, VectorsConfig
 };
-use serde_json::Value as JsonValue;
-use uuid::Uuid;
 use reqwest;
-use dotenv::dotenv;
+use serde_json::Value as JsonValue;
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+use tokio::time::Duration;
+use uuid::Uuid;
 
 const MODULE_NAME: &str = "groups_list";
 const MAX_CONCURRENT_REQUESTS: usize = 5;

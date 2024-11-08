@@ -1,13 +1,12 @@
-use crate::tests::core::TestFramework;
-use std::sync::Arc;
-use qdrant_client::prelude::*;
-use qdrant_client::qdrant::{
-    SearchPoints, SearchParams, Filter, FieldCondition, Match
-};
 use dotenv::dotenv;
+use qdrant_client::prelude::*;
 use qdrant_client::qdrant::r#match::MatchValue;
+use qdrant_client::qdrant::{
+    FieldCondition, Filter, Match, SearchParams, SearchPoints
+};
 use reqwest;
 use serde_json::Value as JsonValue;
+use std::sync::Arc;
 
 const VECTOR_SIZE: u64 = 1536;
 const EMBEDDING_MODEL: &str = "text-embedding-ada-002";

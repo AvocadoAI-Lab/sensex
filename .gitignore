@@ -38,10 +38,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-/src/backend/target
+/src1/backend/target
 .idea/
 /wazuh_api_spec.yaml
-/src/app/docs/
-/src/backend/src/tests/load_tests.rs
-/src/docs
-/src/backend/test_results
+/src1/app/docs/
+/src1/backend/src/tests/load_tests.rs
+/src1/docs
+/src1/backend/test_results
