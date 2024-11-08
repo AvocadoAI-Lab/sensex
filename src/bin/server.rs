@@ -18,6 +18,9 @@ use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use sha2::{Sha256, Digest};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use uuid::Uuid;
+use tokio::process::Command as TokioCommand;
+use tokio::io::BufReader;
+use std::process::{Stdio};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -37,6 +40,7 @@ struct AuthRequest {
     nonce: String,
     signature: String,
     session_id: Option<String>,
+    wql_query: String,
 }
 
 #[derive(Debug)]
@@ -64,7 +68,6 @@ impl ServerState {
 
     fn load_client_keys(&self) -> Result<()> {
         let mut keys = self.client_keys.lock().unwrap();
-        // 在生產環境中，應該從安全的存儲中加載客戶端密鑰
         keys.insert("client1".to_string(), "test_key_1".to_string());
         Ok(())
     }
@@ -168,6 +171,36 @@ fn sign_response(response: &str, key: &str) -> String {
     BASE64.encode(hasher.finalize())
 }
 
+async fn execute_curl_command(query: &str) -> Result<(bool, String)> {
+    // 創建臨時文件來存儲查詢
+    let temp_file = format!("temp_query_{}.json", Uuid::new_v4());
+    fs::write(&temp_file, query)
+        .map_err(|e| format!("Failed to write temp query file: {}", e))?;
+
+    let output = Command::new("curl")
+        .args(&[
+            "-k",
+            "-u", "admin:aD?VhljrN55GGbO?twN6IL+zCxKYKeNT",
+            "https://localhost:9200/wazuh-alerts-4.x-*/_search?pretty",
+            "-H", "Content-Type: application/json",
+            "-d", &format!("@{}", temp_file)
+        ])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    // 刪除臨時文件
+    let _ = fs::remove_file(&temp_file);
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if output.status.success() {
+        Ok((true, stdout))
+    } else {
+        Ok((false, format!("Error: {}\nDebug info: {}", stderr, stdout)))
+    }
+}
+
 async fn handle_client(
     mut stream: tokio_native_tls::TlsStream<TcpStream>,
     state: Arc<ServerState>,
@@ -185,20 +218,29 @@ async fn handle_client(
     }
 
     let auth_request: AuthRequest = serde_json::from_slice(&buf[..n])
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to parse request: {}", e))?;
 
+    println!("Received request from client_id: {}", auth_request.client_id);
+    
     if !verify_timestamp(auth_request.timestamp) {
         return Err("Invalid timestamp".into());
     }
 
-    let session_id = if let Some(sid) = auth_request.session_id {
+    let session_id = if let Some(sid) = auth_request.session_id.clone() {
+        println!("Validating existing session: {}", sid);
         if !state.validate_session(&sid, &auth_request.client_id) {
-            return Err("Invalid session".into());
+            println!("Creating new session as validation failed");
+            state.create_session(auth_request.client_id.clone())
+        } else {
+            println!("Using existing session");
+            sid
         }
-        sid
     } else {
+        println!("Creating new session");
         state.create_session(auth_request.client_id.clone())
     };
+
+    println!("Using session_id: {}", session_id);
 
     if !state.verify_nonce(&session_id, &auth_request.nonce) {
         return Err("Nonce already used".into());
@@ -214,25 +256,9 @@ async fn handle_client(
         return Err("Invalid signature".into());
     }
 
-    let output = Command::new("curl")
-        .args(&[
-            "-k",
-            "-u", "admin:aD?VhljrN55GGbO?twN6IL+zCxKYKeNT",
-            "https://localhost:9200/wazuh-alerts-4.x-*/_search?pretty",
-            "-H", "Content-Type: application/json",
-            "-d", r#"{
-                "size": 5,
-                "sort": [
-                    {
-                        "timestamp": {
-                            "order": "desc"
-                        }
-                    }
-                ]
-            }"#
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
+    println!("Executing WQL query...");
+    let (status, data) = execute_curl_command(&auth_request.wql_query).await?;
+    println!("Query execution completed");
 
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -240,15 +266,11 @@ async fn handle_client(
         .as_secs();
 
     let response = Response {
-        status: output.status.success(),
-        data: if output.status.success() {
-            String::from_utf8_lossy(&output.stdout).to_string()
-        } else {
-            String::from_utf8_lossy(&output.stderr).to_string()
-        },
+        status,
+        data,
         session_id: session_id.clone(),
         timestamp,
-        signature: String::new(), // 暫時為空，稍後填充
+        signature: String::new(),
     };
 
     let response_json = serde_json::to_string(&response)
@@ -262,8 +284,10 @@ async fn handle_client(
 
     let response_json = serde_json::to_string(&response)
         .map_err(|e| e.to_string())?;
-    
+
+    println!("Sending response ({} bytes)...", response_json.len());
     stream.write_all(response_json.as_bytes()).await.map_err(|e| e.to_string())?;
+    stream.flush().await.map_err(|e| e.to_string())?;
     println!("Response sent successfully");
     
     Ok(())
@@ -294,7 +318,6 @@ async fn main() -> Result<()> {
         .map_err(|e| e.to_string())?;
     println!("Server listening on {}", addr);
 
-    // 啟動會話清理任務
     let state_clone = state.clone();
     tokio::spawn(async move {
         loop {

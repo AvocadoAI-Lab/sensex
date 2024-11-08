@@ -1,0 +1,23 @@
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "range": {
+            "rule.level": {
+              "gte": 10
+            }
+          }
+        }
+      ]
+    }
+  },
+  "size": 20,
+  "sort": [
+    {
+      "@timestamp": {
+        "order": "desc"
+      }
+    }
+  ]
+}

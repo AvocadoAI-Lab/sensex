@@ -43,3 +43,6 @@ next-env.d.ts
 /target
 /draft_models
 /test_results
+/query_results
+/src/bin/quicknote
+session.json

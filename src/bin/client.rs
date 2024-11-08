@@ -11,11 +11,16 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use sha2::{Sha256, Digest};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::io::Write;
+use tokio::time::sleep;
 
 const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(1);
+const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 const SESSION_FILE: &str = "session.json";
+const WQL_QUERIES_DIR: &str = "wql_queries";
+const BUFFER_SIZE: usize = 8192;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -35,6 +40,7 @@ struct AuthRequest {
     nonce: String,
     signature: String,
     session_id: Option<String>,
+    wql_query: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,6 +78,7 @@ impl Client {
                     .as_secs();
                 
                 if now - session.created_at <= 3600 && session.client_id == client_id {
+                    println!("Loaded existing session: {}", session.session_id);
                     return Some(session);
                 }
             }
@@ -83,6 +90,7 @@ impl Client {
         if let Some(session) = &self.session {
             let content = serde_json::to_string_pretty(session)?;
             fs::write(SESSION_FILE, content)?;
+            println!("Session saved: {}", session.session_id);
         }
         Ok(())
     }
@@ -102,7 +110,44 @@ impl Client {
         expected == signature
     }
 
-    async fn send_request(&mut self, stream: &mut tokio_native_tls::TlsStream<TcpStream>) -> Result<Response> {
+    async fn stream_response(
+        stream: &mut tokio_native_tls::TlsStream<TcpStream>,
+    ) -> Result<String> {
+        let mut response_data = Vec::new();
+        let mut buffer = vec![0u8; BUFFER_SIZE];
+        let mut total_bytes = 0;
+        
+        print!("\rReceiving data: 0 bytes");
+        std::io::stdout().flush()?;
+
+        loop {
+            match stream.read(&mut buffer).await {
+                Ok(0) => {
+                    if total_bytes == 0 {
+                        return Err("Connection closed by server".into());
+                    }
+                    break;
+                },
+                Ok(n) => {
+                    response_data.extend_from_slice(&buffer[..n]);
+                    total_bytes += n;
+                    print!("\rReceiving data: {} bytes", total_bytes);
+                    std::io::stdout().flush()?;
+                }
+                Err(e) => return Err(format!("Failed to read response: {}", e).into()),
+            }
+        }
+        println!("\nReceived total: {} bytes", total_bytes);
+
+        String::from_utf8(response_data)
+            .map_err(|e| format!("Invalid UTF-8 sequence: {}", e).into())
+    }
+
+    async fn send_request(
+        &mut self, 
+        stream: &mut tokio_native_tls::TlsStream<TcpStream>,
+        wql_query: String
+    ) -> Result<Response> {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)?
             .as_secs();
@@ -123,25 +168,19 @@ impl Client {
             nonce,
             signature,
             session_id: self.session.as_ref().map(|s| s.session_id.clone()),
+            wql_query,
         };
 
         let request_json = serde_json::to_string(&request)?;
-        println!("Sending request: {}", request_json);
+        println!("Sending request...");
         stream.write_all(request_json.as_bytes()).await?;
-        
-        let mut response = Vec::new();
-        stream.read_to_end(&mut response).await?;
-        
-        if response.is_empty() {
-            return Err("Empty response from server".into());
-        }
+        stream.flush().await?;
 
-        let response_str = String::from_utf8(response)?;
-        println!("Received response: {}", response_str);
+        println!("Waiting for response...");
+        let response_str = Self::stream_response(stream).await?;
         
         let mut response: Response = serde_json::from_str(&response_str)?;
         
-        // 驗證響應
         let signature = response.signature.clone();
         response.signature = String::new();
         let response_data = serde_json::to_string(&response)?;
@@ -152,7 +191,6 @@ impl Client {
 
         response.signature = signature;
 
-        // 更新會話信息
         self.session = Some(SessionInfo {
             session_id: response.session_id.clone(),
             client_id: self.client_id.clone(),
@@ -163,6 +201,18 @@ impl Client {
 
         Ok(response)
     }
+}
+
+fn get_wql_query_files() -> Result<Vec<PathBuf>> {
+    let mut query_files = Vec::new();
+    for entry in fs::read_dir(WQL_QUERIES_DIR)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+            query_files.push(path);
+        }
+    }
+    Ok(query_files)
 }
 
 async fn connect_with_retry(
@@ -177,7 +227,7 @@ async fn connect_with_retry(
             }
             Err(e) => {
                 last_error = Some(e);
-                tokio::time::sleep(RETRY_DELAY).await;
+                sleep(RETRY_DELAY).await;
             }
         }
     }
@@ -192,8 +242,13 @@ async fn main() -> Result<()> {
         process::exit(1);
     });
 
-    println!("Connecting to server at {}...", server_addr);
-    
+    println!("Loading WQL query files...");
+    let query_files = get_wql_query_files()?;
+    if query_files.is_empty() {
+        eprintln!("No WQL query files found in {} directory", WQL_QUERIES_DIR);
+        process::exit(1);
+    }
+
     let mut client = Client::new(
         "client1".to_string(),
         "test_key_1".to_string(),
@@ -205,19 +260,41 @@ async fn main() -> Result<()> {
         .build()?;
     let connector = TokioTlsConnector::from(connector);
     
-    let mut stream = connect_with_retry(&server_addr, &connector).await?;
-    println!("TLS connection established");
+    let output_dir = "query_results";
+    fs::create_dir_all(output_dir)?;
 
-    let response = client.send_request(&mut stream).await?;
-    
-    if response.status {
-        println!("\n成功獲取數據:");
-        println!("{}", response.data);
-    } else {
-        eprintln!("\n錯誤:");
-        eprintln!("{}", response.data);
-        process::exit(1);
+    for query_file in query_files {
+        println!("\n執行查詢: {:?}", query_file);
+        
+        let query_content = fs::read_to_string(&query_file)?;
+        
+        // 為每個查詢建立新的連接
+        println!("Connecting to server at {}...", server_addr);
+        let mut stream = connect_with_retry(&server_addr, &connector).await?;
+        println!("TLS connection established");
+        
+        let response = client.send_request(&mut stream, query_content).await?;
+        
+        if response.status {
+            let query_name = query_file.file_stem().unwrap().to_string_lossy();
+            let output_file = format!("{}/{}_{}.json", 
+                output_dir,
+                query_name,
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)?
+                    .as_secs()
+            );
+            
+            fs::write(&output_file, &response.data)?;
+            println!("查詢結果已保存到: {}", output_file);
+        } else {
+            eprintln!("查詢失敗: {}", response.data);
+        }
+        
+        // 等待一段時間再進行下一個查詢
+        sleep(RECONNECT_DELAY).await;
     }
 
+    println!("\n所有查詢已完成");
     Ok(())
 }
