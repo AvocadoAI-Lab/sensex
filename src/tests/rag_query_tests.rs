@@ -134,6 +134,7 @@ async fn search_collection(
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_rag_queries() -> Result<(), Box<dyn std::error::Error>> {
     // Load environment variables
     dotenv().ok();

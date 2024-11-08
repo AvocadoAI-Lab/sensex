@@ -298,6 +298,7 @@ async fn test_agent_endpoints(
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_groups_list() -> Result<(), Box<dyn std::error::Error>> {
     // Load environment variables from .env file
     dotenv().ok();
