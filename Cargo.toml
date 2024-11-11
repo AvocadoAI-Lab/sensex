@@ -35,8 +35,13 @@ tokio-native-tls = "0.3.1"
 governor = "0.6.0"
 nonzero_ext = "0.3.0"
 rcgen = "0.12.1"
+headless_chrome = "1.0.5"
 
 [dev-dependencies]
 hyper = { version = "0.14", features = ["full"] }
 tower = "0.4.13"
 tempfile = "3.10.1"
+
+[[bin]]
+name = "json_to_html_pdf"
+path = "src/bin/json_to_html_pdf.rs"

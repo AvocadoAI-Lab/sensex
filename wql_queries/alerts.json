@@ -10,7 +10,7 @@
       ]
     }
   },
-  "size": 5,
+  "size": 10000,
   "sort": [
     {
       "timestamp": {
