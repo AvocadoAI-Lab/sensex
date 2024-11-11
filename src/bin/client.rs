@@ -14,6 +14,9 @@ use tokio::net::TcpStream;
 use tokio::time::sleep;
 use tokio_native_tls::TlsConnector as TokioTlsConnector;
 use uuid::Uuid;
+use reqwest;
+use std::collections::HashMap;
+use dotenv::dotenv;
 
 const MAX_RETRIES: u32 = 3;
 const RETRY_DELAY: Duration = Duration::from_secs(1);
@@ -51,21 +54,60 @@ struct SessionInfo {
     last_used: u64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Group {
+    id: String,
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Agent {
+    id: String,
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WazuhRequest {
+    endpoint: String,
+    token: String,
+    params: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WazuhAuthRequest {
+    endpoint: String,
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WazuhAuthResponse {
+    token: Option<String>,
+    error: Option<String>,
+}
+
 struct Client {
     client_id: String,
     client_key: String,
     server_key: String,
     session: Option<SessionInfo>,
+    http_client: reqwest::Client,
+    wazuh_endpoint: String,
+    wazuh_token: Option<String>,
 }
 
 impl Client {
-    fn new(client_id: String, client_key: String, server_key: String) -> Self {
+    fn new(client_id: String, client_key: String, server_key: String, wazuh_endpoint: String) -> Self {
         let session = Self::load_session(&client_id);
+        let http_client = reqwest::Client::new();
         Self {
             client_id,
             client_key,
             server_key,
             session,
+            http_client,
+            wazuh_endpoint,
+            wazuh_token: None,
         }
     }
 
@@ -201,6 +243,141 @@ impl Client {
 
         Ok(response)
     }
+
+    async fn authenticate(&mut self, username: &str, password: &str) -> Result<()> {
+        let auth_request = WazuhAuthRequest {
+            endpoint: self.wazuh_endpoint.clone(),
+            username: username.to_string(),
+            password: password.to_string(),
+        };
+
+        let response = self.http_client.post("http://localhost:3001/auth")
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .json(&auth_request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        let body = response.text().await?;
+
+        println!("Auth response status: {}", status);
+        println!("Auth response body: {}", body);
+
+        if status.is_success() {
+            let auth_response: WazuhAuthResponse = serde_json::from_str(&body)?;
+            if let Some(token) = auth_response.token {
+                self.wazuh_token = Some(token);
+                Ok(())
+            } else {
+                Err("Authentication failed: No token received".into())
+            }
+        } else {
+            Err(format!("Authentication failed: {}", body).into())
+        }
+    }
+
+    async fn fetch_groups(&self) -> Result<Vec<Group>> {
+        for attempt in 1..=MAX_RETRIES {
+            let wazuh_request = WazuhRequest {
+                endpoint: self.wazuh_endpoint.clone(),
+                token: self.wazuh_token.clone().unwrap(),
+                params: HashMap::new(),
+            };
+
+            let response = self.http_client.post("http://localhost:3001/groups")
+                .header(reqwest::header::CONTENT_TYPE, "application/json")
+                .json(&wazuh_request)
+                .send()
+                .await?;
+            
+            let status = response.status();
+            let body = response.text().await?;
+            
+            println!("Response status: {}", status);
+            println!("Response body: {}", body);
+            
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&body)?;
+                if let Some(affected_items) = json["data"]["affected_items"].as_array() {
+                    let groups: Vec<Group> = affected_items
+                        .iter()
+                        .filter_map(|item| {
+                            Some(Group {
+                                id: item["name"].as_str()?.to_string(),
+                                name: item["name"].as_str()?.to_string(),
+                            })
+                        })
+                        .collect();
+                    println!("Parsed {} groups", groups.len());
+                    return Ok(groups);
+                } else {
+                    println!("Unexpected response structure: {:?}", json);
+                }
+            } else {
+                println!("Request failed with status: {}", status);
+            }
+            
+            if attempt < MAX_RETRIES {
+                println!("Retrying in {} seconds...", RETRY_DELAY.as_secs());
+                sleep(RETRY_DELAY).await;
+            }
+        }
+        
+        Err(format!("Failed to fetch groups after {} attempts", MAX_RETRIES).into())
+    }
+
+    async fn fetch_agents(&self, group_id: &str) -> Result<Vec<Agent>> {
+        for attempt in 1..=MAX_RETRIES {
+            let mut params = HashMap::new();
+            params.insert("group_id".to_string(), group_id.to_string());
+
+            let wazuh_request = WazuhRequest {
+                endpoint: self.wazuh_endpoint.clone(),
+                token: self.wazuh_token.clone().unwrap(),
+                params,
+            };
+
+            let response = self.http_client.post(&format!("http://localhost:3001/groups/{}/agents", group_id))
+                .header(reqwest::header::CONTENT_TYPE, "application/json")
+                .json(&wazuh_request)
+                .send()
+                .await?;
+            
+            let status = response.status();
+            let body = response.text().await?;
+            
+            println!("Response status: {}", status);
+            println!("Response body: {}", body);
+            
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&body)?;
+                if let Some(affected_items) = json["data"]["affected_items"].as_array() {
+                    let agents: Vec<Agent> = affected_items
+                        .iter()
+                        .filter_map(|item| {
+                            Some(Agent {
+                                id: item["id"].as_str()?.to_string(),
+                                name: item["name"].as_str()?.to_string(),
+                            })
+                        })
+                        .collect();
+                    println!("Parsed {} agents for group {}", agents.len(), group_id);
+                    return Ok(agents);
+                } else {
+                    println!("Unexpected response structure: {:?}", json);
+                }
+            } else {
+                println!("Request failed with status: {}", status);
+            }
+            
+            if attempt < MAX_RETRIES {
+                println!("Retrying in {} seconds...", RETRY_DELAY.as_secs());
+                sleep(RETRY_DELAY).await;
+            }
+        }
+        
+        Err(format!("Failed to fetch agents for group {} after {} attempts", group_id, MAX_RETRIES).into())
+    }
 }
 
 fn get_wql_query_files() -> Result<Vec<PathBuf>> {
@@ -236,6 +413,8 @@ async fn connect_with_retry(
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenv().ok();
+
     let server_addr = env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Usage: client <server_address:port>");
         eprintln!("Example: client 192.168.1.100:8080");
@@ -249,11 +428,19 @@ async fn main() -> Result<()> {
         process::exit(1);
     }
 
+    let wazuh_url = env::var("WAZUH_URL").expect("WAZUH_URL must be set in .env file");
+    let wazuh_username = env::var("WAZUH_USERNAME").expect("WAZUH_USERNAME must be set in .env file");
+    let wazuh_password = env::var("WAZUH_PASSWORD").expect("WAZUH_PASSWORD must be set in .env file");
+
     let mut client = Client::new(
         "client1".to_string(),
         "test_key_1".to_string(),
         "server_key".to_string(),
+        wazuh_url,
     );
+
+    // Authenticate and get a token
+    client.authenticate(&wazuh_username, &wazuh_password).await?;
     
     let connector = TlsConnector::builder()
         .danger_accept_invalid_certs(true)
@@ -263,38 +450,50 @@ async fn main() -> Result<()> {
     let output_dir = "query_results";
     fs::create_dir_all(output_dir)?;
 
-    for query_file in query_files {
-        println!("\n執行查詢: {:?}", query_file);
-        
-        let query_content = fs::read_to_string(&query_file)?;
-        
-        // 為每個查詢建立新的連接
-        println!("Connecting to server at {}...", server_addr);
-        let mut stream = connect_with_retry(&server_addr, &connector).await?;
-        println!("TLS connection established");
-        
-        let response = client.send_request(&mut stream, query_content).await?;
-        
-        if response.status {
-            let query_name = query_file.file_stem().unwrap().to_string_lossy();
-            let output_file = format!("{}/{}_{}.json", 
-                output_dir,
-                query_name,
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)?
-                    .as_secs()
-            );
-            
-            fs::write(&output_file, &response.data)?;
-            println!("查詢結果已保存到: {}", output_file);
-        } else {
-            eprintln!("查詢失敗: {}", response.data);
+    println!("Fetching groups...");
+    let groups = client.fetch_groups().await?;
+    println!("Fetched {} groups", groups.len());
+
+    for group in groups {
+        println!("Fetching agents for group: {}", group.name);
+        let agents = client.fetch_agents(&group.id).await?;
+        println!("Fetched {} agents for group {}", agents.len(), group.name);
+
+        for agent in agents {
+            for query_file in &query_files {
+                println!("\nExecuting query for agent {}: {:?}", agent.name, query_file);
+                
+                let mut query_content = fs::read_to_string(&query_file)?;
+                query_content = query_content.replace("{{agent_id}}", &agent.id);
+                
+                println!("Connecting to server at {}...", server_addr);
+                let mut stream = connect_with_retry(&server_addr, &connector).await?;
+                println!("TLS connection established");
+                
+                let response = client.send_request(&mut stream, query_content).await?;
+                
+                if response.status {
+                    let query_name = query_file.file_stem().unwrap().to_string_lossy();
+                    let output_file = format!("{}/{}_{}_{}.json", 
+                        output_dir,
+                        query_name,
+                        agent.name.replace(" ", "_"),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)?
+                            .as_secs()
+                    );
+                    
+                    fs::write(&output_file, &response.data)?;
+                    println!("Query result saved to: {}", output_file);
+                } else {
+                    eprintln!("Query failed: {}", response.data);
+                }
+                
+                sleep(RECONNECT_DELAY).await;
+            }
         }
-        
-        // 等待一段時間再進行下一個查詢
-        sleep(RECONNECT_DELAY).await;
     }
 
-    println!("\n所有查詢已完成");
+    println!("\nAll queries completed");
     Ok(())
 }
