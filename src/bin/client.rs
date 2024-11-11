@@ -465,6 +465,7 @@ async fn main() -> Result<()> {
                 
                 let mut query_content = fs::read_to_string(&query_file)?;
                 query_content = query_content.replace("{{agent_id}}", &agent.id);
+                query_content = query_content.replace("{{agent_name}}", &agent.name);
                 
                 println!("Connecting to server at {}...", server_addr);
                 let mut stream = connect_with_retry(&server_addr, &connector).await?;

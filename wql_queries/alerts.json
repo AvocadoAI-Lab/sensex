@@ -1,6 +1,14 @@
 {
   "query": {
-    "match_all": {}
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "agent.name": "{{agent_name}}"
+          }
+        }
+      ]
+    }
   },
   "size": 5,
   "sort": [
