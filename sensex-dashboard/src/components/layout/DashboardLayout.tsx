@@ -1,4 +1,5 @@
 'use client';
+import DownloadButton from '@/components/common/DownloadButton';
 
 export default function DashboardLayout({
   children,
@@ -10,10 +11,15 @@ export default function DashboardLayout({
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Ransomware Attack Analysis Report</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Comprehensive security analysis of ransomware attack patterns and high-risk alerts
-          </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Ransomware Attack Analysis Report</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Comprehensive security analysis of ransomware attack patterns and high-risk alerts
+              </p>
+            </div>
+            <DownloadButton />
+          </div>
         </div>
       </header>
 
