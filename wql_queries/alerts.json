@@ -12,7 +12,7 @@
         {
           "range": {
             "rule.level": {
-              "gte": 7
+              "gte": 10
             }
           }
         }
