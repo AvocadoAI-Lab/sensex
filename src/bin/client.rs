@@ -455,6 +455,11 @@ async fn main() -> Result<()> {
     println!("Fetched {} groups", groups.len());
 
     for group in groups {
+        // Create a directory for the group
+        let group_dir = format!("{}/{}", output_dir, group.name.replace(" ", "_"));
+        fs::create_dir_all(&group_dir)?;
+        println!("Created directory for group: {}", group_dir);
+
         println!("Fetching agents for group: {}", group.name);
         let agents = client.fetch_agents(&group.id).await?;
         println!("Fetched {} agents for group {}", agents.len(), group.name);
@@ -476,7 +481,7 @@ async fn main() -> Result<()> {
                 if response.status {
                     let query_name = query_file.file_stem().unwrap().to_string_lossy();
                     let output_file = format!("{}/{}_{}_{}.json", 
-                        output_dir,
+                        group_dir,
                         query_name,
                         agent.name.replace(" ", "_"),
                         SystemTime::now()
