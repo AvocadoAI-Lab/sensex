@@ -74,7 +74,7 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Group Overview Section */}
+        {/* Combined Group Overview and Agent Details Section */}
         <section>
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
@@ -82,27 +82,23 @@ export default function Home() {
               {t('dashboard.subtitle')}
             </p>
           </div>
-          <GroupSummary data={data} />
-        </section>
-
-        {/* Agent Details Section */}
-        <section>
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900">{t('dashboard.agentDetails.title')}</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {t('dashboard.agentDetails.subtitle')}
-            </p>
-          </div>
           <div className="space-y-6">
-            {Object.entries(agentAlerts)
-              .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
-              .map(([agentName, alerts]) => (
-                <AgentDetail
-                  key={agentName}
-                  agentName={agentName}
-                  alerts={alerts}
-                />
-              ))}
+            <GroupSummary data={data} />
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dashboard.agentDetails.title')}</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                {t('dashboard.agentDetails.subtitle')}
+              </p>
+              {Object.entries(agentAlerts)
+                .sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
+                .map(([agentName, alerts]) => (
+                  <AgentDetail
+                    key={agentName}
+                    agentName={agentName}
+                    alerts={alerts}
+                  />
+                ))}
+            </div>
           </div>
         </section>
       </div>
