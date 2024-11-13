@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 interface MitreAttackMatrixProps {
   distribution: {
@@ -7,6 +8,8 @@ interface MitreAttackMatrixProps {
 }
 
 export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixProps) {
+  const t = useTranslations('mitre');
+  
   const sortedEntries = Object.entries(distribution)
     .sort(([, a], [, b]) => b - a);
 
@@ -62,11 +65,11 @@ export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixPro
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">MITRE ATT&CK Coverage</h3>
-          <p className="text-sm text-gray-500 mt-1">Analysis of detected tactics and techniques</p>
+          <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
+          <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
         </div>
         <div className="px-4 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
-          <span className="text-sm font-medium text-gray-700">Total Detections: </span>
+          <span className="text-sm font-medium text-gray-700">{t('totalDetections')}: </span>
           <span className="text-sm font-bold text-gray-900">{total}</span>
         </div>
       </div>
@@ -119,7 +122,7 @@ export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixPro
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                   <span className="text-xs text-gray-600">
-                    Coverage: <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                    {t('coverage')}: <span className="font-semibold">{percentage.toFixed(1)}%</span>
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -127,7 +130,7 @@ export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixPro
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                   <span className="text-xs text-gray-600">
-                    Frequency: <span className="font-semibold">{((count / total) * 100).toFixed(1)}%</span>
+                    {t('frequency')}: <span className="font-semibold">{((count / total) * 100).toFixed(1)}%</span>
                   </span>
                 </div>
               </div>
@@ -141,7 +144,7 @@ export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixPro
           <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-gray-500 text-sm">No MITRE ATT&CK data available</p>
+          <p className="text-gray-500 text-sm">{t('noData')}</p>
         </div>
       )}
 
@@ -150,19 +153,19 @@ export default function MitreAttackMatrix({ distribution }: MitreAttackMatrixPro
         <div className="text-xs space-y-2">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-purple-600 rounded-full mr-2" />
-            <span className="text-gray-600">High Coverage (75% or more)</span>
+            <span className="text-gray-600">{t('legend.high')}</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-blue-600 rounded-full mr-2" />
-            <span className="text-gray-600">Medium Coverage (50-74%)</span>
+            <span className="text-gray-600">{t('legend.medium')}</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-indigo-600 rounded-full mr-2" />
-            <span className="text-gray-600">Low Coverage (25-49%)</span>
+            <span className="text-gray-600">{t('legend.low')}</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-violet-600 rounded-full mr-2" />
-            <span className="text-gray-600">Minimal Coverage (less than 25%)</span>
+            <span className="text-gray-600">{t('legend.minimal')}</span>
           </div>
         </div>
       </div>

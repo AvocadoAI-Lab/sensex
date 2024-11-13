@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -7,7 +8,7 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
-import type { Root } from '@/types/alerts';
+import type { Root } from '../../types/alerts';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -16,6 +17,8 @@ interface ComplianceOverviewProps {
 }
 
 export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
+  const t = useTranslations('compliance');
+
   // Filter for high severity alerts with SCA data
   const highSeverityScaData = data.hits.hits.filter(
     hit => hit._source.rule.level >= 10 && hit._source.data?.sca
@@ -72,7 +75,7 @@ export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
       },
       title: {
         display: true,
-        text: 'High Severity Compliance Check Results',
+        text: t('chart.title'),
         font: {
           size: 16,
         },
@@ -95,17 +98,17 @@ export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
       {/* Compliance Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Total Compliance Checks</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('summary.totalChecks')}</h3>
           <p className="mt-2 text-3xl font-semibold text-gray-900">{totalChecks}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Compliance Rate</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('summary.complianceRate')}</h3>
           <p className={`mt-2 text-3xl font-semibold ${complianceRate >= 80 ? 'text-green-600' : 'text-red-600'}`}>
             {complianceRate}%
           </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Critical Failure Rate</h3>
+          <h3 className="text-sm font-medium text-gray-500">{t('summary.failureRate')}</h3>
           <p className={`mt-2 text-3xl font-semibold ${failureRate <= 20 ? 'text-green-600' : 'text-red-600'}`}>
             {failureRate}%
           </p>
@@ -122,7 +125,7 @@ export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
 
         {/* Policy Coverage */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Policy Coverage</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('chart.title')}</h3>
           <div className="space-y-4">
             {Object.entries(policyFrequency)
               .sort(([, a], [, b]) => b - a)
@@ -131,7 +134,9 @@ export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
                   <div className="flex-1">
                     <div className="flex justify-between mb-1">
                       <span className="text-sm font-medium text-gray-700">{policy}</span>
-                      <span className="text-sm text-gray-500">{count} checks</span>
+                      <span className="text-sm text-gray-500">
+                        {t('chart.checksLabel', { count })}
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
@@ -150,21 +155,18 @@ export default function ComplianceOverview({ data }: ComplianceOverviewProps) {
 
       {/* Compliance Notes */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Compliance Insights</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('insights.title')}</h3>
         <div className="prose max-w-none">
           <ul className="space-y-2 text-gray-600">
             <li>
               {complianceRate >= 80 
-                ? "Strong compliance performance with over 80% pass rate"
-                : "Attention needed: Compliance rate below recommended threshold"}
+                ? t('insights.goodCompliance')
+                : t('insights.poorCompliance')}
             </li>
             <li>
               {failureRate <= 20
-                ? "Acceptable failure rate within normal range"
-                : "Critical: High failure rate requires immediate attention"}
-            </li>
-            <li>
-              Total of {Object.keys(policyFrequency).length} unique compliance policies monitored
+                ? t('insights.goodFailureRate')
+                : t('insights.poorFailureRate')}
             </li>
           </ul>
         </div>

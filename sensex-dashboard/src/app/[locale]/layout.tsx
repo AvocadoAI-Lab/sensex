@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { notFound } from "next/navigation";
 import localFont from "next/font/local";
+import { setRequestLocale } from 'next-intl/server';
 import "../globals.css";
 import { locales, type Locale } from '../../i18n/routing';
-import { setRequestLocale } from 'next-intl/server';
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -39,16 +39,14 @@ async function getMessages(locale: string) {
   }
 }
 
-export default async function RootLayout({ children, params }: Props) {
-  const locale = params.locale as Locale;
-  
-  // Validate that the incoming `locale` parameter is valid
-  if (!locales.includes(locale)) {
-    notFound();
-  }
-
+export default async function RootLayout({ children, params: { locale } }: Props) {
   // Enable static rendering
   setRequestLocale(locale);
+
+  // Validate that the incoming `locale` parameter is valid
+  if (!locales.includes(locale as Locale)) {
+    notFound();
+  }
 
   const messages = await getMessages(locale);
 

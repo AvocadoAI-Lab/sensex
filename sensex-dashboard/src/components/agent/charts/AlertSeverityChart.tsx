@@ -1,5 +1,6 @@
 'use client';
 import { Pie } from 'react-chartjs-2';
+import { useTranslations } from 'next-intl';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -19,9 +20,11 @@ interface AlertSeverityChartProps {
     medium: number;
     low: number;
   };
+  title?: string;
 }
 
-export default function AlertSeverityChart({ distribution }: AlertSeverityChartProps) {
+export default function AlertSeverityChart({ distribution, title }: AlertSeverityChartProps) {
+  const t = useTranslations('agent.charts');
   const total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
 
   const data: ChartData<'pie'> = {
@@ -127,7 +130,7 @@ export default function AlertSeverityChart({ distribution }: AlertSeverityChartP
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Alert Severity Distribution</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{title || t('severity')}</h3>
         <span className="text-sm text-gray-500">Total: {total} alerts</span>
       </div>
       

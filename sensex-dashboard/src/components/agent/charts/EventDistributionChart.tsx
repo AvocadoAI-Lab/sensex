@@ -1,12 +1,15 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 interface EventDistributionChartProps {
   distribution: {
     [key: string]: number;
   };
+  title?: string;
 }
 
-export default function EventDistributionChart({ distribution }: EventDistributionChartProps) {
+export default function EventDistributionChart({ distribution, title }: EventDistributionChartProps) {
+  const t = useTranslations('agent.charts');
   const sortedEntries = Object.entries(distribution)
     .sort(([, a], [, b]) => b - a);
 
@@ -29,7 +32,7 @@ export default function EventDistributionChart({ distribution }: EventDistributi
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Event Distribution</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{title || t('events')}</h3>
         <span className="text-sm text-gray-500">Total: {total} events</span>
       </div>
 
@@ -74,11 +77,11 @@ export default function EventDistributionChart({ distribution }: EventDistributi
               {/* Hover Info */}
               <div className="mt-2 flex justify-between items-center opacity-0 hover:opacity-100 transition-opacity duration-200">
                 <span className="text-xs text-gray-500">
-                  {count} events of this type
+                  {count} {t('eventsOfType')}
                 </span>
                 <div className="flex items-center space-x-1">
                   <span className="text-xs text-gray-500">
-                    Relative frequency:
+                    {t('relativeFrequency')}:
                   </span>
                   <span className={`text-xs font-medium ${color.text}`}>
                     {percentage.toFixed(1)}%
@@ -92,7 +95,7 @@ export default function EventDistributionChart({ distribution }: EventDistributi
 
       {sortedEntries.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-500">No event data available</p>
+          <p className="text-gray-500">{t('noData')}</p>
         </div>
       )}
     </div>

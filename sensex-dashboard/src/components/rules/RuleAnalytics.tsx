@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,7 +12,7 @@ import {
   Legend,
   ChartOptions,
 } from 'chart.js';
-import type { Root } from '@/types/alerts';
+import type { Root } from '../../types/alerts';
 
 ChartJS.register(
   ArcElement,
@@ -28,6 +29,8 @@ interface RuleAnalyticsProps {
 }
 
 export default function RuleAnalytics({ data }: RuleAnalyticsProps) {
+  const t = useTranslations('rules');
+
   // Analyze rule groups for high severity alerts
   const groupDistribution = data.hits.hits.reduce((acc: { [key: string]: number }, hit) => {
     if (hit._source.rule.level >= 10) {
@@ -72,7 +75,7 @@ export default function RuleAnalytics({ data }: RuleAnalyticsProps) {
       },
       title: {
         display: true,
-        text: 'High Severity Alert Categories',
+        text: t('title'),
         font: {
           size: 16,
         },
@@ -129,7 +132,7 @@ export default function RuleAnalytics({ data }: RuleAnalyticsProps) {
       },
       title: {
         display: true,
-        text: 'High Severity Alerts Over Time',
+        text: t('severityTimeline'),
         font: {
           size: 16,
         },
@@ -140,14 +143,14 @@ export default function RuleAnalytics({ data }: RuleAnalyticsProps) {
         stacked: true,
         title: {
           display: true,
-          text: 'Date'
+          text: t('date')
         }
       },
       y: {
         stacked: true,
         title: {
           display: true,
-          text: 'Number of Alerts'
+          text: t('alertCount')
         }
       },
     },
@@ -163,19 +166,19 @@ export default function RuleAnalytics({ data }: RuleAnalyticsProps) {
 
         {/* Alert Categories Table */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Top Alert Categories</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('title')}</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
+                    {t('columns.category')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Alert Count
+                    {t('columns.alertCount')}
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Percentage
+                    {t('columns.percentage')}
                   </th>
                 </tr>
               </thead>

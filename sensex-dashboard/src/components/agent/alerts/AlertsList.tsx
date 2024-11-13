@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import type { Hit } from '../../../types/alerts';
 
 interface AlertsListProps {
@@ -7,6 +8,8 @@ interface AlertsListProps {
 }
 
 export default function AlertsList({ alerts, limit = 10 }: AlertsListProps) {
+  const t = useTranslations('agent.alerts');
+  
   const sortedAlerts = [...alerts]
     .sort((a, b) => new Date(b._source.timestamp).getTime() - new Date(a._source.timestamp).getTime())
     .slice(0, limit);
@@ -50,8 +53,10 @@ export default function AlertsList({ alerts, limit = 10 }: AlertsListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Recent Alerts</h3>
-        <span className="text-sm text-gray-500">Showing latest {Math.min(limit, sortedAlerts.length)} alerts</span>
+        <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
+        <span className="text-sm text-gray-500">
+          {t('showing', { count: Math.min(limit, sortedAlerts.length) })}
+        </span>
       </div>
       
       <div className="space-y-4">
@@ -68,7 +73,7 @@ export default function AlertsList({ alerts, limit = 10 }: AlertsListProps) {
                 <div className="flex items-center space-x-3">
                   <div className={`flex items-center space-x-2`}>
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${severity.badge}`}>
-                      Level {alert._source.rule.level}
+                      {t('level', { level: alert._source.rule.level })}
                     </span>
                   </div>
                   <div className="flex items-center text-xs text-gray-500">
@@ -80,7 +85,7 @@ export default function AlertsList({ alerts, limit = 10 }: AlertsListProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700`}>
-                    ID: {alert._source.rule.id}
+                    {t('ruleId', { id: alert._source.rule.id })}
                   </span>
                 </div>
               </div>
@@ -119,23 +124,23 @@ export default function AlertsList({ alerts, limit = 10 }: AlertsListProps) {
                 {alert._source.data?.win && (
                   <div className="ml-4.5 pl-3 mt-3">
                     <div className="bg-white/50 rounded-lg border border-gray-200 p-3">
-                      <div className="text-xs font-medium text-gray-700 mb-2">Windows Event Details</div>
+                      <div className="text-xs font-medium text-gray-700 mb-2">{t('windowsEvent.title')}</div>
                       <div className="space-y-1.5 text-xs text-gray-600">
                         {alert._source.data.win.system.message && (
                           <div className="flex items-start">
-                            <span className="font-medium min-w-[70px]">Message:</span>
+                            <span className="font-medium min-w-[70px]">{t('windowsEvent.message')}:</span>
                             <span className="ml-2">{alert._source.data.win.system.message}</span>
                           </div>
                         )}
                         {alert._source.data.win.system.eventID && (
                           <div className="flex items-center">
-                            <span className="font-medium min-w-[70px]">Event ID:</span>
+                            <span className="font-medium min-w-[70px]">{t('windowsEvent.eventId')}:</span>
                             <span className="ml-2">{alert._source.data.win.system.eventID}</span>
                           </div>
                         )}
                         {alert._source.data.win.system.channel && (
                           <div className="flex items-center">
-                            <span className="font-medium min-w-[70px]">Channel:</span>
+                            <span className="font-medium min-w-[70px]">{t('windowsEvent.channel')}:</span>
                             <span className="ml-2">{alert._source.data.win.system.channel}</span>
                           </div>
                         )}
