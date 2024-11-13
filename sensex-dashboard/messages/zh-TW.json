@@ -1,0 +1,22 @@
+{
+  "common": {
+    "loading": "正在載入安全數據...",
+    "error": {
+      "title": "數據載入錯誤",
+      "default": "無法載入安全數據"
+    }
+  },
+  "layout": {
+    "title": "群組安全分析儀表板",
+    "subtitle": "跨所有代理的綜合安全分析與監控",
+    "footer": "用於監控和分析群組範圍內安全事件的即時安全分析儀表板"
+  },
+  "dashboard": {
+    "title": "RedTeam2 安全概覽",
+    "subtitle": "RedTeam2 群組中所有代理的綜合安全分析",
+    "agentDetails": {
+      "title": "代理詳情",
+      "subtitle": "群組中每個代理的詳細安全分析"
+    }
+  }
+}

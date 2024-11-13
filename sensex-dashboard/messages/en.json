@@ -1,0 +1,22 @@
+{
+  "common": {
+    "loading": "Loading security data...",
+    "error": {
+      "title": "Error Loading Data",
+      "default": "Failed to load security data"
+    }
+  },
+  "layout": {
+    "title": "Group Security Analysis Dashboard",
+    "subtitle": "Comprehensive security analysis and monitoring across all agents",
+    "footer": "Real-time security analysis dashboard for monitoring and analyzing group-wide security events"
+  },
+  "dashboard": {
+    "title": "RedTeam2 Security Overview",
+    "subtitle": "Comprehensive security analysis across all agents in the RedTeam2 group",
+    "agentDetails": {
+      "title": "Agent Details",
+      "subtitle": "Detailed security analysis for each agent in the group"
+    }
+  }
+}

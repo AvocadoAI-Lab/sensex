@@ -1,7 +1,11 @@
+import createNextIntlPlugin from 'next-intl/plugin';
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const withNextIntl = createNextIntlPlugin();
+
+const config: NextConfig = {
+  // Enable static rendering
+  output: 'standalone'
 };
 
-export default nextConfig;
+export default withNextIntl(config);
