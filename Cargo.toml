@@ -1,5 +1,5 @@
 [package]
-name = "sensex-backend"
+name = "sensex_backend"
 version = "0.1.0"
 edition = "2021"
 
@@ -45,3 +45,7 @@ tempfile = "3.10.1"
 [[bin]]
 name = "json_to_html_pdf"
 path = "src/bin/json_to_html_pdf.rs"
+
+[[bin]]
+name = "sensex-backend"
+path = "src/bin/sensex-backend.rs"

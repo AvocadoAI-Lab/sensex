@@ -22,7 +22,7 @@ jobs:
 
       - name: Start server in background
         run: |
-          cargo run &
+          cargo run --bin sensex-backend &
           sleep 5
 
       - name: Run tests

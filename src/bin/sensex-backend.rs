@@ -1,12 +1,7 @@
-use routes::create_router;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
-mod routes;
-mod handlers;
-mod client;
-#[cfg(test)]
-mod tests;
+use sensex_backend::routes::create_router;
 
 #[tokio::main]
 async fn main() {
